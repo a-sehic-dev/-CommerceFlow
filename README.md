@@ -145,6 +145,30 @@ See `.env.example` for all options:
 - [ ] Scheduled reports & email alerts
 - [ ] PostgreSQL + Redis production stack
 
+## Git / GitHub (Windows)
+
+Git must run **only** from this project folder, not from `C:\Users\User`.
+
+**Cursor / VS Code:** Open **File → Open Folder** and select the CommerceFlow folder. The integrated terminal starts here automatically (see `.vscode/settings.json`).
+
+**External terminal — pick one:**
+
+```powershell
+# PowerShell: go to project first
+$proj = (Get-ChildItem "$env:USERPROFILE\Desktop" | Where-Object { $_.Name -match 'CommerceFlow' }).FullName
+Set-Location $proj
+git status
+```
+
+Or double-click **`CommerceFlow-Git.cmd`** on the Desktop project folder — opens CMD already in the right directory.
+
+```powershell
+# Or use the helper script (any git command)
+.\scripts\git-here.ps1 push -u origin main
+```
+
+Remote: `https://github.com/a-sehic-dev/CommerceFlow.git`
+
 ## License
 
 MIT
