@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Import History{% endblock %}
+{% block page_title %}Data Import{% endblock %}
+{% block page_subtitle %}Upload and manage your business datasets{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <div class="card card-padded">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Upload Data</h3>
+        <p class="card-subtitle">Drag & drop or browse files</p>
+      </div>
+    </div>
+    <div id="dropzone" class="dropzone">
+      <svg class="w-12 h-12 mx-auto mb-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+      </svg>
+      <p class="font-medium text-white mb-1">Drop your file here</p>
+      <p class="text-sm text-slate-500 mb-6">CSV or XLSX — Sales, Products, or Inventory</p>
+      <input type="file" id="file-input" class="hidden" accept=".csv,.xlsx,.xls">
+      <select id="source-type" class="input-select mb-3 mx-auto block max-w-xs">
+        <option value="generic">Generic CSV</option>
+        <option value="shopify">Shopify Export</option>
+        <option value="woocommerce">WooCommerce Export</option>
+      </select>
+      <p class="text-xs text-slate-500 mb-4 max-w-xs mx-auto">Type is detected from column headers. Override below if needed.</p>
+      <select id="dataset-type" class="input-select mb-3 mx-auto block max-w-xs" aria-label="Dataset type override">
+        <option value="auto" selected>Auto-detect from columns</option>
+        <option value="sales">Sales</option>
+        <option value="products">Products</option>
+        <option value="inventory">Inventory</option>
+      </select>
+      <button type="button" onclick="document.getElementById('file-input').click()" class="btn-primary">Browse Files</button>
+    </div>
+    <div id="upload-status" class="mt-4 hidden"></div>
+    <div class="import-reset-actions mt-6 pt-4 border-t border-white/5">
+      <p class="text-xs text-slate-500 mb-2">Environment</p>
+      <button type="button" class="btn-sidebar-danger w-full mb-2" onclick="CF.openClearDatasetsModal()">Clear Imported Datasets</button>
+      <button type="button" class="btn-sidebar-warning w-full" onclick="CF.openResetAnalysisModal()">Reset Analysis</button>
+    </div>
+  </div>
+
+  <div class="card card-padded import-history-panel">
+    <div class="card-header import-history-header">
+      <div>
+        <h3 class="card-title">Import History</h3>
+        <p class="card-subtitle" id="import-history-count">Your uploaded datasets</p>
+      </div>
+      <div class="import-bulk-actions" id="import-bulk-actions">
+        <label class="import-select-all-label">
+          <input type="checkbox" id="import-select-all" onchange="CF.toggleSelectAllImports(this.checked)">
+          <span>Select all</span>
+        </label>
+        <button type="button" class="btn-toolbar" id="btn-delete-selected" onclick="CF.openDeleteImportModal('bulk')" disabled>Delete selected</button>
+        <button type="button" class="btn-toolbar btn-toolbar-danger" onclick="CF.openDeleteImportModal('all')">Clear all</button>
+      </div>
+    </div>
+    <div id="import-history" class="import-history-list"></div>
+  </div>
+</div>
+
+<div id="type-confirm-modal" class="analysis-modal" style="display:none" aria-hidden="true">
+  <div class="analysis-modal-backdrop" onclick="CF.closeTypeConfirmModal()"></div>
+  <div class="analysis-modal-dialog" role="dialog">
+    <div class="analysis-modal-header">
+      <div>
+        <h2>Confirm dataset type</h2>
+        <p class="analysis-modal-sub" id="type-confirm-sub">We could not confidently classify this file from its columns.</p>
+      </div>
+      <button type="button" class="icon-btn" onclick="CF.closeTypeConfirmModal()" aria-label="Close">×</button>
+    </div>
+    <div class="analysis-modal-body">
+      <p class="text-sm text-slate-400 mb-4" id="type-confirm-filename"></p>
+      <div class="flex flex-col gap-2">
+        <button type="button" class="btn-choose-dataset" onclick="CF.confirmImportType('sales')">Sales Dataset</button>
+        <button type="button" class="btn-choose-dataset" onclick="CF.confirmImportType('products')">Products Dataset</button>
+        <button type="button" class="btn-choose-dataset" onclick="CF.confirmImportType('inventory')">Inventory Dataset</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="delete-import-modal" class="analysis-modal" style="display:none" aria-hidden="true">
+  <div class="analysis-modal-backdrop" onclick="CF.closeDeleteImportModal()"></div>
+  <div class="analysis-modal-dialog" role="dialog">
+    <div class="analysis-modal-header">
+      <div>
+        <h2>🗑 Delete Dataset</h2>
+        <p class="analysis-modal-sub" id="delete-import-sub">Are you sure you want to remove this imported dataset?</p>
+      </div>
+      <button type="button" class="icon-btn" onclick="CF.closeDeleteImportModal()" aria-label="Close">×</button>
+    </div>
+    <div class="analysis-modal-body">
+      <p class="text-sm text-slate-400" id="delete-import-detail">Source files on disk are not deleted. This removes imported data from your workspace only.</p>
+      <p class="text-sm text-white mt-3 font-medium" id="delete-import-target"></p>
+    </div>
+    <div class="analysis-modal-footer">
+      <button type="button" class="btn-secondary" onclick="CF.closeDeleteImportModal()">Cancel</button>
+      <button type="button" class="btn-danger" id="btn-confirm-delete-import" onclick="CF.confirmDeleteImport()">Delete</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

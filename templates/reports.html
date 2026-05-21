@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Export Center{% endblock %}
+{% block page_title %}Export Center{% endblock %}
+{% block page_subtitle %}Enterprise analytics exports &amp; data delivery{% endblock %}
+
+{% block content %}
+<div class="export-center" id="export-center">
+  <section class="export-hero">
+    <div class="export-hero-grid">
+      <div class="export-hero-copy">
+        <div class="export-hero-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Enterprise BI Exports
+        </div>
+        <h2 class="export-hero-title">Analytics Reports &amp; Data Delivery</h2>
+        <p class="export-hero-desc">
+          Generate formatted workbooks, streaming CSV extracts, and operational reports from your active datasets.
+          Built for large catalogs and high-volume transaction history.
+        </p>
+        <div class="export-hero-badges" id="export-summary-badges">
+          <span class="export-stat-badge skeleton-bar" style="width:7rem;height:2rem"></span>
+          <span class="export-stat-badge skeleton-bar" style="width:7rem;height:2rem"></span>
+          <span class="export-stat-badge skeleton-bar" style="width:7rem;height:2rem"></span>
+          <span class="export-stat-badge skeleton-bar" style="width:7rem;height:2rem"></span>
+        </div>
+        <div class="export-hero-actions">
+          <button type="button" id="btn-enterprise-export" class="btn-export-primary" onclick="CF.startEnterpriseExport()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download Enterprise Workbook (.xlsx)
+          </button>
+          <p class="export-hero-hint">5 formatted sheets · Executive summary · Profit leakage</p>
+        </div>
+      </div>
+      <div class="export-hero-visual" aria-hidden="true">
+        <div class="export-visual-card">
+          <div class="export-visual-header">
+            <span class="export-visual-dot"></span>
+            <span class="export-visual-dot"></span>
+            <span class="export-visual-dot"></span>
+          </div>
+          <div class="export-visual-sheets">
+            <div class="export-visual-sheet active">Executive</div>
+            <div class="export-visual-sheet">Products</div>
+            <div class="export-visual-sheet">Inventory</div>
+            <div class="export-visual-sheet">Alerts</div>
+            <div class="export-visual-sheet">Leakage</div>
+          </div>
+          <div class="export-visual-bars">
+            <span style="--h:72%"></span><span style="--h:48%"></span><span style="--h:88%"></span><span style="--h:56%"></span><span style="--h:64%"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="export-meta-strip">
+    <div class="export-meta-item">
+      <span class="export-meta-label">Last generated</span>
+      <span class="export-meta-value" id="export-last-generated">—</span>
+    </div>
+    <div class="export-meta-divider"></div>
+    <div class="export-meta-item">
+      <span class="export-meta-label">Dataset size</span>
+      <span class="export-meta-value" id="export-dataset-size">—</span>
+    </div>
+    <div class="export-meta-divider"></div>
+    <div class="export-meta-item">
+      <span class="export-meta-label">Est. workbook size</span>
+      <span class="export-meta-value" id="export-est-size">—</span>
+    </div>
+    <div class="export-meta-divider"></div>
+    <div class="export-meta-item">
+      <span class="export-meta-label">Status</span>
+      <span class="export-meta-value export-status-pill" id="export-status">Ready</span>
+    </div>
+  </section>
+
+  <section class="export-progress-panel hidden" id="export-progress-panel">
+    <div class="export-progress-header">
+      <span class="export-progress-title" id="export-progress-title">Generating export…</span>
+      <span class="export-progress-pct" id="export-progress-pct">0%</span>
+    </div>
+    <div class="export-progress-track">
+      <div class="export-progress-fill" id="export-progress-fill" style="width:0%"></div>
+    </div>
+    <p class="export-progress-message" id="export-progress-message">Queued</p>
+  </section>
+
+  <div class="export-section-divider">
+    <span>Individual exports</span>
+  </div>
+
+  <section class="export-grid" id="export-grid"></section>
+
+  <div class="export-empty-selection hidden" id="export-empty-selection">
+    <div class="export-empty-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0-3l3-3m-3 3V10"/></svg>
+    </div>
+    <h3>No active datasets</h3>
+    <p>Run Analysis and select products, sales, or inventory imports to unlock exports.</p>
+    <button type="button" class="btn-primary" onclick="CF.openAnalysisModal()">Choose datasets</button>
+  </div>
+</div>
+{% endblock %}

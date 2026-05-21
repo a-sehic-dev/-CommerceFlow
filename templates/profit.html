@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Profit Leakage{% endblock %}
+{% block page_title %}Profit Leakage Detection{% endblock %}
+{% block page_subtitle %}Margin erosion, pricing issues & revenue anomalies{% endblock %}
+
+{% block content %}
+<div id="profit-summary" class="metrics-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))"></div>
+
+<div class="card card-padded hero-metric">
+  <p class="metric-label">Estimated Leakage Impact</p>
+  <p id="leakage-total" class="hero-metric-value text-red-400">—</p>
+  <p class="metric-sub mt-2">Aggregate estimated profit at risk</p>
+</div>
+
+<div class="card card-padded">
+  <div class="filter-bar">
+    <select id="severity-filter" class="input-select" onchange="CF.loadProfit()">
+      <option value="">All severities</option>
+      <option value="critical">Critical</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+  </div>
+  <div id="profit-issues" class="space-y-3 max-h-[32rem] overflow-y-auto"></div>
+</div>
+
+<div class="card card-padded mt-6">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Recommendations</h3>
+      <p class="card-subtitle">Suggested remediation steps</p>
+    </div>
+  </div>
+  <ul id="profit-recs" class="list-none m-0 p-0"></ul>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+data/commerceflow.db
+data/uploads/*
+!data/uploads/.gitkeep
+!data/sample/
+.pytest_cache/
+.mypy_cache/
+*.log
+.DS_Store

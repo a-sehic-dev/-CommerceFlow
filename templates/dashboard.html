@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Executive Overview{% endblock %}
+{% block page_title %}Executive Overview{% endblock %}
+{% block page_subtitle %}Revenue, margin, inventory efficiency & operational risk{% endblock %}
+
+{% block content %}
+<div id="metrics-grid" class="metrics-grid"></div>
+
+<div class="grid-charts">
+  <div class="card card-padded lg:col-span-2">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Revenue Trend</h3>
+        <p class="card-subtitle">Daily revenue performance</p>
+      </div>
+    </div>
+    <div class="chart-panel">
+      <canvas id="revenueChart"></canvas>
+    </div>
+  </div>
+  <div class="card card-padded">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Categories</h3>
+        <p class="card-subtitle">Revenue by category</p>
+      </div>
+    </div>
+    <div class="chart-panel">
+      <canvas id="categoryChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card card-padded">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Top Sellers</h3>
+        <p class="card-subtitle">Highest revenue products</p>
+      </div>
+    </div>
+    <div id="top-sellers"></div>
+  </div>
+  <div class="card card-padded">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Recommendations</h3>
+        <p class="card-subtitle">Priority actions from analysis</p>
+      </div>
+    </div>
+    <ul id="recommendations" class="list-none m-0 p-0"></ul>
+  </div>
+</div>
+{% endblock %}

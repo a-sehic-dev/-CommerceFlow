@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Alerts Center{% endblock %}
+{% block page_title %}Alerts Center{% endblock %}
+{% block page_subtitle %}Operational warnings & risk notifications{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+  <select id="alert-severity" class="input-select" onchange="CF.loadAlerts()">
+    <option value="">All severities</option>
+    <option value="critical">Critical</option>
+    <option value="high">High</option>
+    <option value="medium">Medium</option>
+    <option value="low">Low</option>
+  </select>
+  <label class="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+    <input type="checkbox" id="unread-only" onchange="CF.loadAlerts()" class="rounded">
+    Unread only
+  </label>
+  <button type="button" onclick="CF.generateAlerts()" class="btn-secondary ml-auto">Regenerate Alerts</button>
+</div>
+<div id="alerts-list" class="space-y-4"></div>
+{% endblock %}

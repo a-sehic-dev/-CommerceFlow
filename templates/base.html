@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}CommerceFlow{% endblock %} — Ecommerce Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="app-body">
+  <div class="ambient-bg" aria-hidden="true">
+    <div class="ambient-orb ambient-orb-1"></div>
+    <div class="ambient-orb ambient-orb-2"></div>
+  </div>
+
+  <div id="sidebar-overlay" class="sidebar-overlay" onclick="CF.closeSidebar()"></div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+        </svg>
+      </div>
+      <div>
+        <p class="brand-name">CommerceFlow</p>
+        <p class="brand-tag">Intelligence Platform</p>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      {% set nav = [
+        ('overview', '/', 'Executive Overview', 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z'),
+        ('products', '/products', 'Product Intelligence', 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'),
+        ('inventory', '/inventory', 'Inventory Health', 'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'),
+        ('profit', '/profit', 'Profit Leakage', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'),
+        ('alerts', '/alerts', 'Alerts Center', 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'),
+        ('imports', '/imports', 'Import History', 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12'),
+        ('reports', '/reports', 'Export Center', 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z')
+      ] %}
+      {% for key, href, label, icon_path in nav %}
+      <a href="{{ href }}" class="nav-item {% if page == key %}nav-item-active{% endif %}">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_path }}"/>
+          </svg>
+        </span>
+        <span class="nav-label">{{ label }}</span>
+        {% if page == key %}<span class="nav-active-glow"></span>{% endif %}
+      </a>
+      {% endfor %}
+    </nav>
+
+    <div class="sidebar-footer">
+      <p class="sidebar-settings-label">Data</p>
+      <button type="button" class="btn-sidebar-danger" onclick="CF.openClearDatasetsModal()">Clear Imported Datasets</button>
+      <button type="button" class="btn-sidebar-warning" onclick="CF.openResetAnalysisModal()">Reset Analysis</button>
+      <button type="button" onclick="CF.openAnalysisModal()" class="btn-primary btn-primary-full">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Run Analysis
+      </button>
+    </div>
+  </aside>
+
+  <div class="main-shell">
+    <div id="active-datasets-bar" class="active-datasets-bar hidden"></div>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <button type="button" class="icon-btn lg:hidden" onclick="CF.toggleSidebar()" aria-label="Open menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div>
+          <h1 class="page-heading">{% block page_title %}Dashboard{% endblock %}</h1>
+          <p class="page-subheading">{% block page_subtitle %}Operational intelligence at a glance{% endblock %}</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span id="last-updated" class="status-pill hidden sm:inline-flex"></span>
+        <button type="button" onclick="CF.generateAlerts()" class="icon-btn" title="Generate alerts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="page-content page-enter">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+  <!-- Run Analysis modal -->
+  <div id="analysis-modal" class="analysis-modal" style="display:none" aria-hidden="true">
+    <div class="analysis-modal-backdrop" onclick="CF.closeAnalysisModal()"></div>
+    <div class="analysis-modal-dialog" role="dialog" aria-labelledby="analysis-modal-title">
+      <div class="analysis-modal-header">
+        <div>
+          <h2 id="analysis-modal-title">Run Analysis</h2>
+          <p class="analysis-modal-sub">Select imported datasets from your import history</p>
+        </div>
+        <button type="button" class="icon-btn" onclick="CF.closeAnalysisModal()" aria-label="Close">×</button>
+      </div>
+      <div class="analysis-modal-body">
+        <div id="dataset-pickers" class="dataset-pickers">
+          <!-- rendered by JS -->
+        </div>
+        <p id="analysis-validation-msg" class="validation-msg hidden"></p>
+        <div class="analysis-options">
+          <p class="options-title">Analysis options</p>
+          <label class="checkbox-label"><input type="checkbox" id="opt-rebuild" checked> Rebuild dashboard</label>
+          <label class="checkbox-label"><input type="checkbox" id="opt-alerts" checked> Regenerate alerts</label>
+          <label class="checkbox-label"><input type="checkbox" id="opt-inventory" checked> Recalculate inventory risks</label>
+          <label class="checkbox-label"><input type="checkbox" id="opt-export"> Export report after analysis</label>
+        </div>
+      </div>
+      <div class="analysis-modal-footer">
+        <button type="button" class="btn-secondary" onclick="CF.closeAnalysisModal()">Cancel</button>
+        <button type="button" class="btn-primary" id="btn-confirm-analysis" onclick="CF.executeAnalysis()" disabled>Run Analysis</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import history picker (nested) -->
+  <div id="picker-modal" class="analysis-modal picker-modal" style="display:none" aria-hidden="true">
+    <div class="analysis-modal-backdrop" onclick="CF.closePickerModal()"></div>
+    <div class="analysis-modal-dialog picker-dialog" role="dialog">
+      <div class="analysis-modal-header">
+        <div>
+          <h2 id="picker-modal-title">Choose import</h2>
+          <p class="analysis-modal-sub" id="picker-modal-sub">Sales datasets only</p>
+        </div>
+        <button type="button" class="icon-btn" onclick="CF.closePickerModal()" aria-label="Close">×</button>
+      </div>
+      <div class="picker-search-wrap">
+        <input type="search" id="picker-search" class="picker-search" placeholder="Search by filename…" oninput="CF.filterPickerList()">
+      </div>
+      <div id="picker-list" class="picker-list"></div>
+      <p id="picker-empty" class="picker-empty hidden">No imports found for this dataset type. Upload a file on Import History first.</p>
+    </div>
+  </div>
+
+  <div id="clear-datasets-modal" class="analysis-modal reset-modal-danger" style="display:none" aria-hidden="true">
+    <div class="analysis-modal-backdrop" onclick="CF.closeClearDatasetsModal()"></div>
+    <div class="analysis-modal-dialog" role="dialog">
+      <div class="analysis-modal-header">
+        <div>
+          <h2>Clear imported datasets?</h2>
+          <p class="analysis-modal-sub">This permanently removes uploaded business data from CommerceFlow.</p>
+        </div>
+        <button type="button" class="icon-btn" onclick="CF.closeClearDatasetsModal()" aria-label="Close">×</button>
+      </div>
+      <div class="analysis-modal-body">
+        <ul class="reset-modal-list">
+          <li>All import history and uploaded file copies</li>
+          <li>Products, sales, and inventory records</li>
+          <li>Active dataset selections</li>
+          <li>Generated exports tied to imports</li>
+        </ul>
+        <p class="reset-modal-note">Demo source files in <code>data/demo_companies/</code> are not deleted.</p>
+        <div id="clear-datasets-progress" class="reset-modal-progress hidden">
+          <div class="export-progress-track"><div class="export-progress-fill reset-progress-indeterminate"></div></div>
+          <p class="reset-progress-label" id="clear-datasets-progress-label">Clearing datasets…</p>
+        </div>
+      </div>
+      <div class="analysis-modal-footer">
+        <button type="button" class="btn-secondary" onclick="CF.closeClearDatasetsModal()">Cancel</button>
+        <button type="button" class="btn-danger" id="btn-confirm-clear-datasets" onclick="CF.confirmClearDatasets()">Clear imported datasets</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="reset-analysis-modal" class="analysis-modal reset-modal-warning" style="display:none" aria-hidden="true">
+    <div class="analysis-modal-backdrop" onclick="CF.closeResetAnalysisModal()"></div>
+    <div class="analysis-modal-dialog" role="dialog">
+      <div class="analysis-modal-header">
+        <div>
+          <h2>Reset analysis results?</h2>
+          <p class="analysis-modal-sub">This clears generated metrics, alerts, reports, and intelligence layers while keeping imported datasets.</p>
+        </div>
+        <button type="button" class="icon-btn" onclick="CF.closeResetAnalysisModal()" aria-label="Close">×</button>
+      </div>
+      <div class="analysis-modal-body">
+        <p class="reset-modal-keep-banner">Imported datasets will remain available.</p>
+        <div id="reset-analysis-progress" class="reset-modal-progress hidden">
+          <div class="export-progress-track"><div class="export-progress-fill reset-progress-indeterminate"></div></div>
+          <p class="reset-progress-label" id="reset-analysis-progress-label">Resetting analysis…</p>
+        </div>
+      </div>
+      <div class="analysis-modal-footer">
+        <button type="button" class="btn-secondary" onclick="CF.closeResetAnalysisModal()">Cancel</button>
+        <button type="button" class="btn-warning" id="btn-confirm-reset-analysis" onclick="CF.confirmResetAnalysis()">Reset analysis</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/static/js/app.js"></script>
+  {% block scripts %}{% endblock %}
+  <script>document.addEventListener('DOMContentLoaded', () => CF.init());</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Inventory Health{% endblock %}
+{% block page_title %}Inventory Health{% endblock %}
+{% block page_subtitle %}Stock risks, dead inventory & reorder intelligence{% endblock %}
+
+{% block content %}
+<div id="inventory-summary" class="metrics-grid"></div>
+
+<div class="grid-2">
+  <div class="card card-padded">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Risk Alerts</h3>
+        <p class="card-subtitle">Stock and aging warnings</p>
+      </div>
+    </div>
+    <div id="inventory-alerts" class="space-y-3 max-h-[28rem] overflow-y-auto"></div>
+  </div>
+  <div class="card card-padded">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Reorder Suggestions</h3>
+        <p class="card-subtitle">Based on sales velocity</p>
+      </div>
+    </div>
+    <div id="reorder-table"></div>
+  </div>
+</div>
+{% endblock %}

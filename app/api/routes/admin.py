@@ -1,0 +1,69 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_db
+from app.services.demo_loader_service import DEMO_COMPANIES, DemoLoaderService
+from app.services.reset_service import ResetService
+
+router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+@router.get("/platform-status")
+async def platform_status(db: AsyncSession = Depends(get_db)):
+    return await ResetService(db).platform_status()
+
+
+@router.post("/clear-imported-datasets")
+async def clear_imported_datasets(db: AsyncSession = Depends(get_db)):
+    """Remove imports, uploads, history, and selection. Does not delete demo source files."""
+    result = await ResetService(db).clear_imported_datasets()
+    await db.commit()
+    return result
+
+
+@router.post("/reset-analysis")
+async def reset_analysis(db: AsyncSession = Depends(get_db)):
+    """Clear metrics, alerts, cache, and reports; keep imported datasets. Does not re-run analysis."""
+    result = await ResetService(db).reset_analysis()
+    await db.commit()
+    return result
+
+
+@router.post("/clear-import-history")
+async def clear_import_history(db: AsyncSession = Depends(get_db)):
+    """Deprecated alias — use clear-imported-datasets."""
+    result = await ResetService(db).clear_imported_datasets()
+    await db.commit()
+    return result
+
+
+@router.post("/reset-demo-environment")
+async def reset_demo_environment(db: AsyncSession = Depends(get_db)):
+    """Deprecated alias — use reset-analysis."""
+    result = await ResetService(db).reset_analysis()
+    await db.commit()
+    return result
+
+
+@router.post("/rebuild-analytics-engine")
+async def rebuild_analytics_engine(db: AsyncSession = Depends(get_db)):
+    """Deprecated alias — use reset-analysis."""
+    result = await ResetService(db).reset_analysis()
+    await db.commit()
+    return result
+
+
+@router.post("/demo/load/{company}")
+async def load_demo_company(company: str, db: AsyncSession = Depends(get_db)):
+    if company.lower() not in DEMO_COMPANIES:
+        raise HTTPException(400, f"Unknown company. Choose: {', '.join(DEMO_COMPANIES)}")
+    try:
+        service = DemoLoaderService(db)
+        result = await service.load_company(company, fresh=True)
+        await db.commit()
+        return result
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(500, str(exc)) from exc

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Product Intelligence{% endblock %}
+{% block page_title %}Product Intelligence{% endblock %}
+{% block page_subtitle %}Performance rankings, trends & health scores{% endblock %}
+
+{% block content %}
+<div id="product-summary" class="metrics-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))"></div>
+
+<div class="grid-2">
+  <div class="card card-padded">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Top Sellers</h3>
+        <p class="card-subtitle">Best performing SKUs</p>
+      </div>
+    </div>
+    <div id="top-sellers-table"></div>
+  </div>
+  <div class="card card-padded">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Worst Performers</h3>
+        <p class="card-subtitle">Lowest health scores</p>
+      </div>
+    </div>
+    <div id="worst-table"></div>
+  </div>
+  <div class="card card-padded">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Fast Rising</h3>
+        <p class="card-subtitle">Positive momentum</p>
+      </div>
+    </div>
+    <div id="rising-list"></div>
+  </div>
+  <div class="card card-padded">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Declining</h3>
+        <p class="card-subtitle">Products losing traction</p>
+      </div>
+    </div>
+    <div id="declining-list"></div>
+  </div>
+</div>
+{% endblock %}
