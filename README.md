@@ -1,8 +1,12 @@
 # CommerceFlow
 
+**Founder:** [Sedin Sehic](https://github.com/a-sehic-dev) · **Product:** Ecommerce operations intelligence (import → analysis → executive Excel)
+
 **Ecommerce intelligence and operational automation platform** — detect profit leakage, inventory risks, pricing issues, and product performance trends using deterministic analytics (no AI API required).
 
 ![CommerceFlow](https://img.shields.io/badge/Python-3.11+-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green) ![License](https://img.shields.io/badge/License-MIT-lightgrey)
+
+> **Demo ethics:** Sample files under `data/demo_companies/` are synthetic or generated for testing. Do not present demo output as results for real brands (Nike, Apple, etc.) without permission. See [FOUNDER.md](FOUNDER.md) for LinkedIn positioning and pilot outreach.
 
 ## Features
 
@@ -167,7 +171,7 @@ Or double-click **`CommerceFlow-Git.cmd`** on the Desktop project folder — ope
 .\scripts\git-here.ps1 push -u origin main
 ```
 
-Remote: `https://github.com/a-sehic-dev/CommerceFlow.git`
+Remote: `https://github.com/a-sehic-dev/-CommerceFlow.git`
 
 ## License
 

@@ -26,7 +26,7 @@ from app.utils.excel_polish import (
     write_executive_charts,
 )
 
-ENGINE_VERSION = "CommerceFlow 1.0.0"
+ENGINE_VERSION = "CommerceFlow 1.0.0 · Sedin Sehic"
 EXEC_COLS = 12  # A–L presentation canvas
 
 # ── Theme ────────────────────────────────────────────────────────────────────

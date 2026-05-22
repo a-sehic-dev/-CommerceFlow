@@ -65,7 +65,8 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "app": settings.app_name,
-            "version": "1.0.0",
+            "version": settings.product_version,
+            "founder": settings.founder_name,
             "timezone": APP_TZ_NAME,
             "server_time": now_local().isoformat(),
         }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}CommerceFlow{% endblock %} — Ecommerce Intelligence</title>
+  <title>{% block title %}{{ brand_name }}{% endblock %} — {{ brand_tagline }}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,8 +40,8 @@
         </svg>
       </div>
       <div>
-        <p class="brand-name">CommerceFlow</p>
-        <p class="brand-tag">Intelligence Platform</p>
+        <p class="brand-name">{{ brand_name }}</p>
+        <p class="brand-tag">{{ brand_tagline }}</p>
       </div>
     </div>
 
@@ -67,6 +67,12 @@
       </a>
       {% endfor %}
     </nav>
+
+    <div class="sidebar-founder">
+      <p class="sidebar-founder-label">Built by</p>
+      <a href="{{ founder_url }}" target="_blank" rel="noopener noreferrer" class="sidebar-founder-link">{{ founder_name }}</a>
+      <p class="sidebar-founder-ver">v{{ product_version }}</p>
+    </div>
 
     <div class="sidebar-footer">
       <p class="sidebar-settings-label">Data</p>
@@ -103,6 +109,14 @@
     <div class="page-content page-enter">
       {% block content %}{% endblock %}
     </div>
+
+    <footer class="product-footer">
+      <span>{{ brand_name }} v{{ product_version }}</span>
+      <span class="product-footer-sep">·</span>
+      <span>© 2026 <a href="{{ founder_url }}" target="_blank" rel="noopener noreferrer">{{ founder_name }}</a></span>
+      <span class="product-footer-sep">·</span>
+      <span class="product-footer-demo">Demo &amp; pilot data only — no client exports without permission</span>
+    </footer>
   </div>
 
   <!-- Run Analysis modal -->

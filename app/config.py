@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "CommerceFlow"
+    product_tagline: str = "Ecommerce Operations Intelligence"
+    founder_name: str = "Sedin Sehic"
+    founder_url: str = "https://github.com/a-sehic-dev"
+    product_version: str = "1.0.0"
     app_env: str = "development"
     debug: bool = True
     secret_key: str = "dev-secret-change-in-production"
