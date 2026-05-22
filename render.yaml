@@ -1,0 +1,18 @@
+# Deploy on Render.com (free tier) — public URL for LinkedIn
+# Dashboard: New + Web Service → Connect repo → Render reads this file
+services:
+  - type: web
+    name: commerceflow
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.11.9"

@@ -87,10 +87,16 @@ You don't need a famous client. You need **one repeatable demo** and **one volun
 
 ---
 
+## Public demo URL (LinkedIn clicks)
+
+Local `127.0.0.1` is only on your PC. Follow **[DEPLOY.md](DEPLOY.md)** to deploy on Render (~10 min) and put that **https://** link in your post.
+
+On the live dashboard, visitors click **Load live demo** → then **Run analysis** — no React required; Tailwind + premium CSS.
+
 ## Next steps (when you're ready)
 
 - **Step 6:** `scripts/smoke_test.ps1` — one command "green / red" before a demo
 - **Step 7:** `docs/screenshots/` + README images for GitHub
-- **Step 8:** Landing page or LinkedIn featured section with demo video
+- **Step 8:** Deploy Render URL in LinkedIn post
 
 Ask in chat: "Step 6" when you want the automated smoke test.
