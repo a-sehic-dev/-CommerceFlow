@@ -87,6 +87,7 @@ class AlertService:
             "stockout_risk",
             "low_stock",
             "overstock",
+            "slow_moving",
             "duplicate_sku",
             "missing_inventory",
             "suspicious_discount",

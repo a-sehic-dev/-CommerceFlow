@@ -1,4 +1,4 @@
-# CommerceFlow — Founder playbook (Sedin Sehic)
+# CommerceFlow — Founder playbook (Sedin Šehić)
 
 Step-by-step: protect the product, brand it honestly, build trust on LinkedIn **without** claiming fake clients or misusing someone else's data.
 
@@ -6,7 +6,7 @@ Step-by-step: protect the product, brand it honestly, build trust on LinkedIn **
 
 ## Step 1 — Protect (done in repo)
 
-- [x] `LICENSE` — MIT, copyright **Sedin Sehic (2026)** — you own the code you wrote
+- [x] `LICENSE` — MIT, copyright **Sedin Šehić (2026)** — you own the code you wrote
 - [x] Founder name in app footer + README
 - [ ] Change `SECRET_KEY` in `.env` before any public deploy (never commit `.env`)
 

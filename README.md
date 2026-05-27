@@ -1,12 +1,12 @@
 # CommerceFlow
 
-**Founder:** [Sedin Sehic](https://github.com/a-sehic-dev) · **Product:** Ecommerce operations intelligence (import → analysis → executive Excel)
+**Founder:** [Sedin Šehić](https://github.com/a-sehic-dev) · **Product:** Ecommerce operations intelligence (import → analysis → executive Excel)
 
 **Ecommerce intelligence and operational automation platform** — detect profit leakage, inventory risks, pricing issues, and product performance trends using deterministic analytics (no AI API required).
 
 ![CommerceFlow](https://img.shields.io/badge/Python-3.11+-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green) ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-> **Demo ethics:** Sample files under `data/demo_companies/` are synthetic or generated for testing. Do not present demo output as results for real brands (Nike, Apple, etc.) without permission. See [FOUNDER.md](FOUNDER.md) for LinkedIn positioning and pilot outreach.
+> **Demo ethics:** The public demo workspace uses synthetic **Atlas Retail Group** data only (`data/demo_companies/atlas_*.xlsx`). Legacy Nike/Apple/Zara packs are not loaded in guest demo mode. See [FOUNDER.md](FOUNDER.md) for LinkedIn positioning and pilot outreach.
 
 ## Features
 
@@ -58,11 +58,13 @@ python scripts/seed_sample_data.py
 python run.py
 ```
 
-Open **http://localhost:8000** in your browser.
+Open **http://localhost:8000** for the marketing site, or **http://localhost:8000/dashboard** for the app.
+
+Rebuild landing after edits: `cd landing && npm run build`
 
 ### First Steps
 
-1. Visit the **Executive Overview** dashboard
+1. Visit **http://localhost:8000/dashboard** (Executive Overview)
 2. Click **Run Analysis** in the sidebar
 3. Click the bell icon or visit **Alerts Center** → **Regenerate Alerts**
 4. Explore **Product Intelligence**, **Inventory Health**, and **Profit Leakage**
@@ -128,8 +130,9 @@ Export products CSV — maps `SKU`, `Name`, `Regular price`, `Categories`.
 
 See `.env.example` for all options:
 
-- `LOW_STOCK_THRESHOLD` — quantity triggering low-stock alerts (default: 10)
-- `DEAD_INVENTORY_DAYS` — days before inventory classified as dead (default: 120)
+- `LOW_STOCK_THRESHOLD` — legacy quantity hint for UI (default: 10)
+- `DEAD_MIN_DAYS_SINCE_LAST_SALE` — dead stock requires 180+ days since last sale, zero 30d velocity, ≤0.05 90d velocity (see `inventory_classification.py`)
+- `SLOW_MOVING_*` / `OVERSTOCK_*` / `LOW_STOCK_MAX_DAYS_COVER` — slow-moving, overstock, and low-stock rules
 - `MARGIN_WARNING_PCT` — margin % threshold for profit leakage (default: 15)
 
 ## Architecture Notes

@@ -5,10 +5,14 @@ __pycache__/
 .venv/
 venv/
 data/commerceflow.db
+data/exports/
 data/uploads/*
+logs/
 !data/uploads/.gitkeep
 !data/sample/
 .pytest_cache/
+landing/node_modules/
+landing/dist/
 .mypy_cache/
 *.log
 .DS_Store

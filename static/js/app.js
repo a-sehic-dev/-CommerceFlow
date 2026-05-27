@@ -8,6 +8,26 @@ const CF = {
 
   resetPendingMode: null,
   platformStatus: null,
+  feedbackRating: 0,
+  workspaceMode: 'demo_workspace',
+  WORKSPACE_MODES: {
+    demo_workspace: {
+      title: 'Demo Workspace',
+      subtitle: 'Explore operational analytics instantly',
+    },
+    authenticated_workspace: {
+      title: 'Operational Workspace',
+      subtitle: 'Private analytics environment',
+    },
+  },
+  exportState: {
+    canExport: false,
+    ready: false,
+    generating: false,
+    hasAnalysis: false,
+    lastJob: null,
+    latestWorkbook: null,
+  },
 
   init() {
     document.addEventListener('keydown', (e) => {
@@ -17,6 +37,7 @@ const CF = {
         if (deleteImport?.style.display === 'flex') CF.closeDeleteImportModal();
         else {
           if (document.getElementById('clear-datasets-modal')?.style.display === 'flex') CF.closeClearDatasetsModal();
+          else if (document.getElementById('feedback-modal')?.style.display === 'flex') CF.closeFeedbackModal();
           if (document.getElementById('reset-analysis-modal')?.style.display === 'flex') CF.closeResetAnalysisModal();
           else {
             const picker = document.getElementById('picker-modal');
@@ -27,11 +48,18 @@ const CF = {
       }
     });
     CF.loadActiveDatasetsBar();
+    CF.initWorkspaceMode();
+    CF.resetExportClientState();
     CF.refreshPlatformUI();
     CF.syncImportsOnLoad();
+    CF.initFeedbackExperience();
+    CF.maybeShowDemoLaunchHint();
+    if (location.pathname === '/reports') {
+      CF.hydrateExportState();
+    }
     const path = location.pathname;
     const loaders = {
-      '/': 'loadDashboard',
+      '/dashboard': 'loadDashboard',
       '/products': 'loadProducts',
       '/inventory': 'loadInventory',
       '/profit': 'loadProfit',
@@ -80,12 +108,16 @@ const CF = {
     if (p.message) lines.push(p.message);
     if (typeof p.detail === 'string') lines.push(p.detail);
     if (typeof p.detail === 'object' && p.detail?.message) lines.push(p.detail.message);
+    if (p.validation?.errors?.length) {
+      p.validation.errors.forEach((line) => lines.push(line));
+    }
     if (p.validation?.warnings?.length) {
       lines.push('Validation: ' + p.validation.warnings.join('; '));
     }
     if (p.validation?.missing_columns) {
       Object.entries(p.validation.missing_columns).forEach(([ds, cols]) => {
-        lines.push(`Missing in ${ds}: ${cols.join(', ')}`);
+        const label = ds.charAt(0).toUpperCase() + ds.slice(1);
+        lines.push(`Missing required columns in ${label} dataset: ${cols.join(', ')}`);
       });
     }
     if (p.errors?.length) {
@@ -97,6 +129,15 @@ const CF = {
     }
   if (p.traceback) lines.push(p.traceback.split('\n').slice(-4).join('\n'));
     return lines.filter(Boolean).join('\n') || err.message || 'Unknown error';
+  },
+
+  sessionId() {
+    const key = 'cf_guest_session';
+    let existing = localStorage.getItem(key);
+    if (existing) return existing;
+    existing = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    localStorage.setItem(key, existing);
+    return existing;
   },
 
   showAnalysisError(err) {
@@ -154,6 +195,31 @@ const CF = {
     return `<span class="badge-dataset badge-dataset-${t}">${prefix}${CF.datasetTypeLabel(t)}</span>`;
   },
 
+  isSampleDataset(item) {
+    const label = (item?.source_label || '').toLowerCase();
+    return label === 'sample data' || label === 'demo';
+  },
+
+  datasetSourceBadge() {
+    return '';
+  },
+
+  environmentSamplePill(active) {
+    const datasets = [active?.sales, active?.products, active?.inventory].filter(Boolean);
+    if (!datasets.some((ds) => CF.isSampleDataset(ds))) return '';
+    return '<span class="env-sample-pill">Sample workspace</span>';
+  },
+
+  datasetMetadataLine(item) {
+    const rows = item?.success_count || item?.row_count || 0;
+    const ts = item?.started_at ? CF.formatDateShort(item.started_at) : '';
+    const parts = [];
+    if (rows) parts.push(`${Number(rows).toLocaleString()} rows`);
+    if (ts) parts.push(`Imported ${ts}`);
+    if (item?.company_name) parts.push(item.company_name);
+    return parts.join(' · ');
+  },
+
   escapeHtml(s) {
     return String(s)
       .replace(/&/g, '&amp;')
@@ -188,7 +254,11 @@ const CF = {
 
   formatPct(n) {
     if (n === null || n === undefined) return 'Not available';
-    return `${Number(n).toFixed(1)}%`;
+    const v = Number(n);
+    if (Number.isNaN(v)) return 'Not available';
+    if (v < -100) return '<-100%';
+    if (v > 100) return '>100%';
+    return `${v.toFixed(1)}%`;
   },
 
   formatMetric(n, formatter = String) {
@@ -323,10 +393,52 @@ const CF = {
   },
 
   datasetTypes: [
-    { key: 'sales', label: 'Sales Dataset' },
-    { key: 'products', label: 'Products Dataset' },
-    { key: 'inventory', label: 'Inventory Dataset' },
+    { key: 'sales', label: 'Sales Intelligence' },
+    { key: 'products', label: 'Product Intelligence' },
+    { key: 'inventory', label: 'Inventory Operations' },
   ],
+
+  prefillSelectionFromActive(active, catalog) {
+    if (!active || !catalog) return;
+    const map = { products: 'products', sales: 'sales', inventory: 'inventory' };
+    const allItems = catalog.all || [
+      ...(catalog.sales || []),
+      ...(catalog.products || []),
+      ...(catalog.inventory || []),
+    ];
+    for (const [key, listKey] of Object.entries(map)) {
+      const fromActive = active[key];
+      const importId = fromActive?.id ?? active[`${key}_import_id`];
+      if (!importId) continue;
+      let match = (catalog[listKey] || []).find((item) => item.id === importId);
+      if (!match) match = allItems.find((item) => item.id === importId);
+      if (match) CF.selection[key] = match;
+    }
+  },
+
+  async resolveAnalysisSelection() {
+    const missing = CF.requiredDatasetTypes().filter((key) => !CF.selection[key]);
+    if (!missing.length) {
+      return {
+        products_import_id: CF.selection.products.id,
+        sales_import_id: CF.selection.sales.id,
+        inventory_import_id: CF.selection.inventory.id,
+      };
+    }
+    try {
+      const active = await CF.fetchJSON('/api/analytics/active-datasets');
+      if (!active.has_selection) return null;
+      const ids = {
+        products_import_id: active.products_import_id,
+        sales_import_id: active.sales_import_id,
+        inventory_import_id: active.inventory_import_id,
+      };
+      if (!ids.products_import_id || !ids.sales_import_id || !ids.inventory_import_id) return null;
+      return ids;
+    } catch {
+      return null;
+    }
+  },
 
   async openAnalysisModal() {
     const modal = document.getElementById('analysis-modal');
@@ -337,25 +449,21 @@ const CF = {
     const pickers = document.getElementById('dataset-pickers');
     if (pickers) pickers.innerHTML = '<div class="skeleton skeleton-metric" style="height:4.5rem;margin-bottom:0.75rem"></div>'.repeat(3);
 
+    CF.selection = { sales: null, products: null, inventory: null };
+
     let catalog = { sales: [], products: [], inventory: [] };
+    let active = null;
     try {
-      catalog = await CF.fetchJSON('/api/imports/catalog');
+      [catalog, active] = await Promise.all([
+        CF.fetchJSON('/api/imports/catalog'),
+        CF.fetchJSON('/api/analytics/active-datasets'),
+      ]);
       CF.catalog = catalog;
+      CF.prefillSelectionFromActive(active, catalog);
     } catch (e) {
       CF.toast('Could not load import history: ' + (CF.parseApiError(e).split('\n')[0] || 'error'), 'error');
       CF.catalog = catalog;
     }
-
-    let active = { has_selection: false };
-    try {
-      active = await CF.fetchJSON('/api/analytics/active-datasets');
-    } catch { /* optional */ }
-
-    CF.selection = { sales: null, products: null, inventory: null };
-    const find = (list, id) => (list || []).find((i) => i.id === id);
-    if (active.sales_import_id) CF.selection.sales = find(catalog.sales, active.sales_import_id) || active.sales;
-    if (active.products_import_id) CF.selection.products = find(catalog.products, active.products_import_id) || active.products;
-    if (active.inventory_import_id) CF.selection.inventory = find(catalog.inventory, active.inventory_import_id) || active.inventory;
 
     CF.renderDatasetPickers();
     CF.updateAnalysisValidation();
@@ -375,14 +483,24 @@ const CF = {
     container.innerHTML = CF.datasetTypes.map(({ key, label }) => {
       const selected = CF.selection[key];
       const count = (CF.catalog?.[key] || []).length;
+      const emptyText = {
+        sales: 'No sales dataset selected',
+        products: 'No product catalog selected',
+        inventory: 'No inventory dataset selected',
+      }[key];
+      const readyText = {
+        sales: 'Revenue dataset connected',
+        products: 'Product operations source connected',
+        inventory: 'Inventory operations source connected',
+      }[key];
       return `
-      <div class="dataset-picker-row">
+      <div class="dataset-picker-row ${selected ? 'is-selected' : 'is-empty'}">
         <p class="dataset-picker-label">${label}</p>
-        <div class="dataset-picker-value">${selected ? CF.renderSelectedChip(selected) : '<span class="dataset-unselected">No file selected</span>'}</div>
+        <div class="dataset-picker-value">${selected ? CF.renderSelectedChip(selected, readyText) : `<span class="dataset-unselected"><span class="dataset-empty-icon" aria-hidden="true">+</span><span>${emptyText}</span></span>`}</div>
         <div class="dataset-picker-actions">
           <button type="button" class="btn-choose-dataset" onclick="CF.openPickerModal('${key}')">
-            Choose from Import History
-            <span class="btn-choose-meta">${count} file${count === 1 ? '' : 's'}</span>
+            Browse Imported Datasets
+            <span class="btn-choose-meta">${count ? `${count} dataset${count === 1 ? '' : 's'} available` : 'Upload operational exports to begin'}</span>
           </button>
           ${selected ? `<button type="button" class="btn-clear-dataset" onclick="CF.clearDataset('${key}')" title="Clear selection">×</button>` : ''}
         </div>
@@ -390,18 +508,18 @@ const CF = {
     }).join('');
   },
 
-  renderSelectedChip(item) {
-    const rows = item.success_count || item.row_count || 0;
+  renderSelectedChip(item, readyText = 'Operational dataset connected') {
     const dtype = (item.dataset_type || '').toLowerCase();
-    return `<span class="dataset-selected-chip">${CF.datasetTypeBadge(dtype, true)}<span class="dataset-selected-name">${CF.escapeHtml(item.display_name || item.filename)}</span><span class="dataset-selected-meta">(${rows} rows)</span></span>`;
+    const meta = CF.datasetMetadataLine(item);
+    return `<span class="dataset-selected-chip">${CF.datasetTypeBadge(dtype, true)}<span class="dataset-selected-copy"><span class="dataset-selected-name">${CF.escapeHtml(item.display_name || item.filename)}</span><span class="dataset-selected-meta">${readyText}</span>${meta ? `<span class="dataset-selected-stats">${CF.escapeHtml(meta)}</span>` : ''}<span class="dataset-original-name">${CF.escapeHtml(item.filename)}</span></span></span>`;
   },
 
   openPickerModal(typeKey) {
     CF.pickerTarget = typeKey;
     const items = CF.catalog?.[typeKey] || [];
-    const labels = { sales: 'Sales', products: 'Products', inventory: 'Inventory' };
-    document.getElementById('picker-modal-title').textContent = `Choose ${labels[typeKey]} Dataset`;
-    document.getElementById('picker-modal-sub').textContent = `Only ${labels[typeKey].toLowerCase()} datasets detected from column headers`;
+    const labels = { sales: 'Sales', products: 'Product', inventory: 'Inventory' };
+    document.getElementById('picker-modal-title').textContent = `Select ${labels[typeKey]} Dataset`;
+    document.getElementById('picker-modal-sub').textContent = 'Choose the operational export to analyze';
     const search = document.getElementById('picker-search');
     if (search) search.value = '';
     const modal = document.getElementById('picker-modal');
@@ -424,18 +542,22 @@ const CF = {
     if (!list) return;
     if (!items.length) {
       list.innerHTML = '';
+      if (empty) {
+        empty.innerHTML = '<strong>No imported datasets available yet.</strong><span>Upload operational exports to begin analysis.</span><button type="button" class="active-ds-action" onclick="location.href=\'/imports\'">Upload Business Data</button>';
+      }
       empty?.classList.remove('hidden');
       return;
     }
     empty?.classList.add('hidden');
     list.innerHTML = items.map((item) => {
-      const rows = item.success_count || item.row_count || 0;
-      const ts = item.started_at ? CF.formatDateShort(item.started_at) : '';
       const dtype = (item.dataset_type || 'unknown').toLowerCase();
+      const title = item.display_name || item.filename;
+      const meta = item.subtitle || CF.datasetMetadataLine(item);
       return `
-      <button type="button" class="picker-item" data-search="${CF.escapeHtml(item.filename).toLowerCase()} ${dtype}" onclick="CF.selectDatasetById(${item.id})">
-        <div class="picker-item-main"><span class="picker-filename">${CF.escapeHtml(item.display_name || item.filename)}</span>${CF.datasetTypeBadge(dtype)}</div>
-        <p class="picker-meta">${CF.escapeHtml(item.subtitle || `${rows} rows • imported ${ts}`)}</p>
+      <button type="button" class="picker-item" data-search="${CF.escapeHtml(`${title} ${item.filename} ${dtype} ${item.company_name || ''}`).toLowerCase()}" onclick="CF.selectDatasetById(${item.id})">
+        <div class="picker-item-main"><span class="picker-filename">${CF.escapeHtml(title)}</span></div>
+        <p class="picker-meta">${CF.escapeHtml(meta)}</p>
+        <p class="picker-original-name">${CF.escapeHtml(item.filename)}</p>
       </button>`;
     }).join('');
   },
@@ -468,9 +590,7 @@ const CF = {
   },
 
   requiredDatasetTypes() {
-    return CF.datasetTypes
-      .map((d) => d.key)
-      .filter((key) => (CF.catalog?.[key] || []).length > 0);
+    return CF.datasetTypes.map((d) => d.key);
   },
 
   updateAnalysisValidation() {
@@ -480,18 +600,97 @@ const CF = {
     const msg = document.getElementById('analysis-validation-msg');
     const labels = { sales: 'Sales', products: 'Products', inventory: 'Inventory' };
 
-    if (btn) btn.disabled = missing.length > 0;
+    const hasAnyImports = CF.datasetTypes.some(({ key }) => (CF.catalog?.[key] || []).length > 0);
+    if (btn) btn.disabled = !hasAnyImports || missing.length > 0;
 
     if (msg) {
-      if (!required.length) {
-        msg.textContent = 'No imported datasets yet. Upload files on Import History first.';
+      if (!hasAnyImports) {
+        msg.textContent = 'No imported datasets available yet. Upload operational exports to begin analysis.';
         msg.classList.remove('hidden');
       } else if (missing.length) {
-        msg.textContent = `Select ${missing.map((k) => labels[k]).join(', ')} dataset${missing.length > 1 ? 's' : ''} to run analysis.`;
+        msg.textContent = `Select or upload ${missing.map((k) => labels[k]).join(', ')} dataset${missing.length > 1 ? 's' : ''} to run analysis.`;
         msg.classList.remove('hidden');
       } else {
         msg.classList.add('hidden');
       }
+    }
+  },
+
+  openFeedbackModal(opts = {}) {
+    const modal = document.getElementById('feedback-modal');
+    if (!modal) return;
+    CF.feedbackRating = 0;
+    document.querySelectorAll('.feedback-star').forEach((star) => star.classList.remove('active'));
+    document.querySelectorAll('.feedback-options input[type="checkbox"]').forEach((input) => { input.checked = false; });
+    const text = document.getElementById('feedback-text');
+    const email = document.getElementById('feedback-email');
+    const message = document.getElementById('feedback-message');
+    const prompt = document.getElementById('feedback-testimonial-prompt');
+    if (text) text.value = '';
+    if (email) email.value = '';
+    message?.classList.add('hidden');
+    prompt?.classList.add('hidden');
+    const submit = document.getElementById('btn-submit-feedback');
+    if (submit) submit.disabled = true;
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+  },
+
+  closeFeedbackModal(dismissed = true) {
+    const modal = document.getElementById('feedback-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+  },
+
+  initFeedbackExperience() {
+    CF.syncFeedbackFab();
+  },
+
+  setFeedbackRating(rating) {
+    CF.feedbackRating = rating;
+    document.querySelectorAll('.feedback-star').forEach((star) => {
+      const value = Number(star.getAttribute('data-rating') || 0);
+      star.classList.toggle('active', value <= rating);
+    });
+    document.getElementById('feedback-testimonial-prompt')?.classList.toggle('hidden', rating < 4);
+    const submit = document.getElementById('btn-submit-feedback');
+    if (submit) submit.disabled = rating < 1;
+  },
+
+  async submitFeedback() {
+    if (!CF.feedbackRating) {
+      CF.toast('Choose a rating before submitting feedback', 'warning');
+      return;
+    }
+    const btn = document.getElementById('btn-submit-feedback');
+    const msg = document.getElementById('feedback-message');
+    if (btn) btn.disabled = true;
+    if (msg) msg.classList.add('hidden');
+    const mostUseful = Array.from(document.querySelectorAll('.feedback-options input[type="checkbox"]:checked'))
+      .map((input) => input.value);
+    try {
+      const payload = {
+        rating: CF.feedbackRating,
+        feedback_text: document.getElementById('feedback-text')?.value || null,
+        email_optional: document.getElementById('feedback-email')?.value || null,
+        session_id: CF.sessionId(),
+        most_useful: mostUseful,
+      };
+      const res = await CF.fetchJSON('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      CF.toast(res.message || 'Feedback captured. Thank you.', 'success', 5000);
+      sessionStorage.setItem('cf_feedback_submitted', '1');
+      CF.closeFeedbackModal(false);
+    } catch (e) {
+      if (msg) {
+        msg.textContent = CF.parseApiError(e).split('\n')[0] || 'Could not submit feedback.';
+        msg.classList.remove('hidden');
+      }
+      if (btn) btn.disabled = false;
     }
   },
 
@@ -500,18 +699,44 @@ const CF = {
     if (!bar) return;
     try {
       const active = await CF.fetchJSON('/api/analytics/active-datasets');
-      if (!active.has_selection) {
-        bar.classList.add('hidden');
-        bar.innerHTML = '';
-        return;
-      }
       bar.classList.remove('hidden');
-      const badge = (label, ds, type) => {
-        if (!ds) return '';
-        const rows = ds.success_count || ds.row_count || 0;
-        return `<span class="active-ds-badge active-ds-badge-${type}"><span class="badge-type">${label}</span><span class="badge-file">✓ ${CF.escapeHtml(ds.filename)}</span><span class="badge-rows">${rows} rows</span></span>`;
+      const modules = [
+        {
+          key: 'sales',
+          status: 'Sales Intelligence Active',
+          emptyTitle: 'Sales Intelligence Engine',
+          meta: 'Connect revenue and transaction data',
+          connectedMeta: 'Revenue dataset connected',
+        },
+        {
+          key: 'products',
+          status: 'Product Intelligence Active',
+          emptyTitle: 'Product Intelligence Engine',
+          meta: 'Connect catalog and merchandising data',
+          connectedMeta: 'Product operations source connected',
+        },
+        {
+          key: 'inventory',
+          status: 'Inventory Operations Active',
+          emptyTitle: 'Inventory Operations Engine',
+          meta: 'Connect stock and fulfillment data',
+          connectedMeta: 'Inventory operations source connected',
+        },
+      ];
+      const hasSelection = modules.some((module) => active[module.key]);
+      const moduleCard = (module) => {
+        const ds = active[module.key];
+        if (!ds) {
+          return `<button type="button" class="active-ds-card active-ds-card-${module.key} is-empty" onclick="location.href='/imports'"><span class="ds-plus" aria-hidden="true">+</span><span class="ds-card-copy"><span class="ds-card-title">${module.emptyTitle}</span><span class="ds-card-meta">${module.meta}</span></span></button>`;
+        }
+        const statusTitle = ds.status_label || module.status;
+        return `<div class="active-ds-card active-ds-card-${module.key} is-connected"><span class="ds-status-dot" aria-hidden="true"></span><span class="ds-card-copy"><span class="ds-card-title">✓ ${CF.escapeHtml(statusTitle)}</span><span class="ds-card-meta">${CF.escapeHtml(module.connectedMeta)}</span></span></div>`;
       };
-      bar.innerHTML = `<div class="active-ds-inner"><span class="active-ds-title">Active Analysis Datasets</span><div class="active-ds-badges">${badge('Sales', active.sales, 'sales')}${badge('Products', active.products, 'products')}${badge('Inventory', active.inventory, 'inventory')}</div><button type="button" class="btn-secondary text-xs" onclick="CF.openAnalysisModal()">Change datasets</button></div>`;
+      const samplePill = CF.environmentSamplePill(active);
+      const action = hasSelection
+        ? '<button type="button" class="active-ds-action" onclick="CF.openAnalysisModal()">Run Your Analysis</button>'
+        : '<button type="button" class="active-ds-action" onclick="location.href=\'/imports\'">Upload Business Data</button>';
+      bar.innerHTML = `<div class="active-ds-shell"><div class="active-ds-copy"><span class="active-ds-title">Analytics environment ${samplePill}</span><strong>${hasSelection ? 'Operational intelligence workspace ready' : 'No analytics sources connected'}</strong><span>${hasSelection ? 'Sales, product, and inventory engines are staged for analysis.' : 'Connect sales, product, and inventory data to begin.'}</span></div><div class="active-ds-badges">${modules.map(moduleCard).join('')}</div>${action}</div>`;
     } catch {
       bar.classList.add('hidden');
     }
@@ -535,8 +760,8 @@ const CF = {
     } catch {
       /* continue */
     }
-    const missing = CF.requiredDatasetTypes().filter((key) => !CF.selection[key]);
-    if (missing.length) {
+    const resolved = await CF.resolveAnalysisSelection();
+    if (!resolved) {
       CF.toast('Select all required datasets before running analysis', 'error');
       CF.updateAnalysisValidation();
       return;
@@ -544,16 +769,14 @@ const CF = {
 
     CF.closeAnalysisModal();
     const body = {
-      products_import_id: CF.selection.products?.id ?? null,
-      sales_import_id: CF.selection.sales?.id ?? null,
-      inventory_import_id: CF.selection.inventory?.id ?? null,
+      ...resolved,
       rebuild_dashboard: document.getElementById('opt-rebuild')?.checked ?? true,
       regenerate_alerts: document.getElementById('opt-alerts')?.checked ?? true,
       recalculate_inventory_risks: document.getElementById('opt-inventory')?.checked ?? true,
-      export_report_after: document.getElementById('opt-export')?.checked ?? false,
     };
     const btn = document.getElementById('btn-confirm-analysis');
     if (btn) btn.disabled = true;
+    CF.toast('Running analysis on your workspace datasets. Large sales files may take a few minutes.', 'info', 12000);
     const stageLabels = [
       'Loading dataset…',
       'Validating schema…',
@@ -585,10 +808,15 @@ const CF = {
         pipeline.post_actions.forEach((a) => CF.toast(a, 'info', 5000));
       }
       CF.setLastUpdated();
+      CF.markAnalysisViewReady();
       await CF.loadActiveDatasetsBar();
+      CF.resetExportClientState();
+      if (location.pathname === '/reports') {
+        await CF.hydrateExportState({ analysisComplete: true });
+      }
       document.getElementById('analysis-error-panel')?.remove();
       const path = location.pathname;
-      if (path === '/') CF.loadDashboard();
+      if (path === '/dashboard') CF.loadDashboard();
       else if (path === '/products') CF.loadProducts();
       else if (path === '/inventory') CF.loadInventory();
       else if (path === '/profit') CF.loadProfit();
@@ -610,6 +838,30 @@ const CF = {
     }
   },
 
+  analysisViewReady() {
+    return sessionStorage.getItem('cf_analysis_view_ready') === '1';
+  },
+
+  markAnalysisViewReady() {
+    sessionStorage.setItem('cf_analysis_view_ready', '1');
+  },
+
+  clearAnalysisViewReady() {
+    sessionStorage.removeItem('cf_analysis_view_ready');
+  },
+
+  syncFeedbackFab() {
+    const fab = document.getElementById('feedback-fab');
+    if (!fab) return;
+    fab.classList.remove('hidden');
+  },
+
+  canDisplayAnalysis(data) {
+    if (!data || data.requires_dataset_selection) return false;
+    if (data.requires_analysis_generation || !data.has_generated_analysis) return false;
+    return CF.analysisViewReady();
+  },
+
   async loadDashboard() {
     const grid = document.getElementById('metrics-grid');
     const topEl = document.getElementById('top-sellers');
@@ -624,14 +876,14 @@ const CF = {
         grid.innerHTML = CF.renderOnboardingCard(false);
         CF.renderEmptyCharts();
         if (topEl) topEl.innerHTML = '<p class="empty-state">No analysis yet</p>';
-        if (recEl) recEl.innerHTML = '<li class="empty-state">Upload datasets or load a demo company to begin</li>';
+        if (recEl) recEl.innerHTML = '<li class="empty-state">Upload business data or load a sample workspace to begin</li>';
         return;
       }
-      if (data.requires_analysis_generation) {
+      if (!CF.canDisplayAnalysis(data)) {
         grid.innerHTML = CF.renderPendingAnalysisCard();
         CF.renderEmptyCharts();
         if (topEl) topEl.innerHTML = '<p class="empty-state">No analysis generated yet</p>';
-        if (recEl) recEl.innerHTML = '<li class="empty-state">No analysis generated yet</li>';
+        if (recEl) recEl.innerHTML = '<li class="empty-state">Run Your Analysis to populate insights</li>';
         const last = document.getElementById('last-updated');
         if (last) { last.textContent = ''; last.classList.add('hidden'); }
         return;
@@ -656,6 +908,7 @@ const CF = {
       ].join('');
       CF.reveal(grid);
 
+      CF.ensureDashboardCanvases();
       CF.chartDefaults();
       CF.renderRevenueChart(data.charts.revenue_trend || []);
       CF.renderCategoryChart(data.charts.category_breakdown || []);
@@ -765,7 +1018,7 @@ const CF = {
     CF.showSkeleton('product-summary', 'metrics', 3);
     try {
       const data = await CF.fetchJSON('/api/analytics/products');
-      if (data.requires_analysis_generation) {
+      if (data.requires_analysis_generation || !CF.analysisViewReady()) {
         CF.showNoAnalysisModule('product-summary', [
           'top-sellers-table', 'worst-table', 'rising-list', 'declining-list',
         ]);
@@ -819,7 +1072,7 @@ const CF = {
     CF.showSkeleton('inventory-summary', 'metrics', 4);
     try {
       const data = await CF.fetchJSON('/api/analytics/inventory');
-      if (data.requires_analysis_generation) {
+      if (data.requires_analysis_generation || !CF.analysisViewReady()) {
         CF.showNoAnalysisModule('inventory-summary', ['inventory-alerts', 'reorder-table']);
         return;
       }
@@ -864,7 +1117,7 @@ const CF = {
     CF.showSkeleton('profit-summary', 'metrics', 3);
     try {
       const data = await CF.fetchJSON('/api/analytics/profit-leakage');
-      if (data.requires_analysis_generation) {
+      if (data.requires_analysis_generation || !CF.analysisViewReady()) {
         const total = document.getElementById('leakage-total');
         if (total) total.textContent = '—';
         CF.showNoAnalysisModule('profit-summary', ['profit-issues', 'profit-recs']);
@@ -1366,6 +1619,10 @@ const CF = {
           ? 'import-status-busy'
           : 'import-status-pending';
     const statusTitle = CF.importStatusLabel(r.status);
+    const metaParts = inProgress
+      ? [statusTitle]
+      : [`${rows.toLocaleString()} rows`, uploaded].filter(Boolean);
+    if (r.company_name) metaParts.push(r.company_name);
     return `
     <article class="import-card${inProgress ? ' import-card-busy' : ''}" data-import-id="${r.id}">
       <label class="import-card-check">
@@ -1373,14 +1630,17 @@ const CF = {
       </label>
       <div class="import-card-body">
         <div class="import-card-top">
-          <p class="import-card-title">${CF.escapeHtml(title)}</p>
-          <span class="import-status-dot ${statusCls}" title="${statusTitle}"></span>
+          <div class="import-card-title-wrap">
+            <p class="import-card-title">${CF.escapeHtml(title)}</p>
+            <p class="import-filename-hint">${CF.escapeHtml(r.filename)}</p>
+          </div>
+          <div class="import-card-status-wrap">
+            <span class="import-status-dot ${statusCls}" title="${statusTitle}"></span>
+          </div>
         </div>
-        ${r.filename !== title ? `<p class="import-filename-hint">${CF.escapeHtml(r.filename)}</p>` : ''}
         <div class="import-card-meta">
           ${CF.datasetTypeShortBadge(dtype)}
-          <span class="import-meta-item">${inProgress ? statusTitle : `${rows.toLocaleString()} rows`}</span>
-          <span class="import-meta-item">${CF.escapeHtml(uploaded)}</span>
+          <span class="import-meta-item">${CF.escapeHtml(metaParts.join(' · '))}</span>
         </div>
         ${r.needs_type_confirmation
           ? `<div class="import-confirm-row"><span class="badge-dataset badge-dataset-confirm">Needs type</span>
@@ -1491,15 +1751,21 @@ const CF = {
       return `<div class="card card-padded onboarding-panel">
         <p class="text-white font-medium mb-2">No analysis generated yet</p>
         <p class="text-sm text-slate-500 mb-4">Datasets are selected. Run analysis to populate metrics and charts.</p>
-        <button type="button" class="btn-primary" onclick="CF.openAnalysisModal()">Run Analysis</button>
+        <button type="button" class="btn-primary" onclick="CF.openAnalysisModal()">Run Your Analysis</button>
       </div>`;
     }
-    return `<div class="card card-padded col-span-full onboarding-panel">
-      <h3 class="text-white font-semibold text-lg mb-2">No analysis generated yet</h3>
-      <p class="text-sm text-slate-400 mb-2">Your imported datasets are ready, but no intelligence has been generated.</p>
-      <p class="text-sm text-slate-500 mb-5">Click Run Analysis to build KPIs, charts, alerts, and recommendations.</p>
-      <button type="button" class="btn-primary" onclick="CF.openAnalysisModal()">Run Analysis</button>
-    </div>`;
+    return [
+      CF.workspaceHero({
+        eyebrow: 'Datasets selected',
+        title: 'Ready to generate operational intelligence',
+        desc: 'Datasets are connected. Click Run Your Analysis to generate KPIs, charts, alerts, and exportable reports — nothing is shown until you run analysis.',
+        primaryText: 'Run Your Analysis',
+        primaryAction: 'CF.openAnalysisModal()',
+        secondaryText: 'Change datasets',
+        secondaryHref: '/imports',
+      }),
+      CF.placeholderMetricCards('ready'),
+    ].join('');
   },
 
   showNoAnalysisModule(summaryId, extraIds = []) {
@@ -1522,29 +1788,98 @@ const CF = {
         <button type="button" class="btn-primary" onclick="location.href='/imports'">Upload Data</button>
       </div>`;
     }
-    return `<div class="card card-padded col-span-full onboarding-panel">
-      <h3 class="text-white font-semibold text-lg mb-2">Welcome to CommerceFlow</h3>
-      <p class="text-sm text-slate-400 mb-2">No revenue, charts, or alerts yet.</p>
-      <p class="text-sm text-slate-500 mb-5">Upload your business datasets to run analysis.</p>
-      <div class="flex flex-wrap gap-3">
-        <button type="button" class="btn-primary" onclick="location.href='/imports'">Upload Data</button>
-        <button type="button" class="btn-secondary" onclick="CF.openAnalysisModal()">Select Datasets</button>
-      </div>
-    </div>`;
+    return [
+      CF.workspaceHero({
+        eyebrow: 'Clean workspace',
+        title: 'Operational Intelligence Workspace',
+        desc: 'Import sales, product, and inventory datasets to generate operational analytics, inventory intelligence, alerts, and executive reports.',
+        primaryText: 'Upload Business Data',
+        primaryHref: '/imports',
+        secondaryText: 'Load Sample Workspace',
+        secondaryAction: "CF.loadDemoCompany('sandbox')",
+        tertiaryText: 'View quick guide',
+        tertiaryHref: '/guide',
+      }),
+      CF.placeholderMetricCards('empty'),
+    ].join('');
   },
 
   renderEmptyCharts() {
-    CF.chartDefaults();
-    CF.renderRevenueChart([]);
-    CF.renderCategoryChart([]);
+    Object.keys(CF.charts).forEach((k) => {
+      if (CF.charts[k]) { CF.charts[k].destroy(); delete CF.charts[k]; }
+    });
+    const revenue = document.getElementById('revenue-chart-panel');
+    const category = document.getElementById('category-chart-panel');
+    if (revenue) revenue.innerHTML = CF.chartPlaceholder('Revenue analytics will appear after processing datasets.');
+    if (category) category.innerHTML = CF.chartPlaceholder('Category breakdown will appear after analysis.');
+  },
+
+  ensureDashboardCanvases() {
+    const revenue = document.getElementById('revenue-chart-panel');
+    const category = document.getElementById('category-chart-panel');
+    if (revenue && !document.getElementById('revenueChart')) {
+      revenue.innerHTML = '<canvas id="revenueChart"></canvas>';
+    }
+    if (category && !document.getElementById('categoryChart')) {
+      category.innerHTML = '<canvas id="categoryChart"></canvas>';
+    }
+  },
+
+  workspaceHero(opts) {
+    const secondary = opts.secondaryHref
+      ? `<a href="${opts.secondaryHref}" class="btn-secondary">${opts.secondaryText}</a>`
+      : `<button type="button" class="btn-secondary" onclick="${opts.secondaryAction}">${opts.secondaryText}</button>`;
+    const tertiary = opts.tertiaryText
+      ? `<a href="${opts.tertiaryHref}" class="btn-ghost">${opts.tertiaryText}</a>`
+      : '';
+    const primary = opts.primaryHref
+      ? `<a href="${opts.primaryHref}" class="btn-primary">${opts.primaryText}</a>`
+      : `<button type="button" class="btn-primary" onclick="${opts.primaryAction}">${opts.primaryText}</button>`;
+    return `<section class="workspace-empty-hero col-span-full">
+      <div class="workspace-empty-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M4 19V5m0 14h16M8 16V9m4 7V6m4 10v-4M6.5 5.5h11"/></svg>
+      </div>
+      <p class="workspace-empty-eyebrow">${opts.eyebrow}</p>
+      <h3>${opts.title}</h3>
+      <p>${opts.desc}</p>
+      <div class="workspace-empty-actions">${primary}${secondary}${tertiary}</div>
+    </section>`;
+  },
+
+  placeholderMetricCards(mode) {
+    const labels = [
+      ['Total Revenue', 'Waiting for datasets'],
+      ['Gross Margin', mode === 'ready' ? 'Ready to process' : 'No analysis yet'],
+      ['Inventory Efficiency', 'Pending analysis'],
+      ['Operational Risk', 'Ready to score'],
+      ['Profit Leakage', 'Awaiting engine'],
+      ['Dead Inventory', 'No results yet'],
+      ['Active Products', 'Import catalog'],
+      ['Avg Order Value', 'Run analysis'],
+    ];
+    return labels.map(([title, sub]) => `
+      <div class="metric-card metric-placeholder">
+        <p class="metric-label">${title}</p>
+        <p class="metric-value">—</p>
+        <p class="metric-subtitle">${sub}</p>
+      </div>
+    `).join('');
+  },
+
+  chartPlaceholder(message) {
+    return `<div class="chart-placeholder">
+      <div class="chart-placeholder-lines" aria-hidden="true">
+        <span style="height:38%"></span><span style="height:62%"></span><span style="height:48%"></span><span style="height:76%"></span><span style="height:54%"></span>
+      </div>
+      <p>${message}</p>
+    </div>`;
   },
 
   clearAnalysisUIState() {
+    CF.clearAnalysisViewReady();
+    CF.syncFeedbackFab();
     CF.exportMeta = null;
-    if (CF.exportPollTimer) {
-      clearInterval(CF.exportPollTimer);
-      CF.exportPollTimer = null;
-    }
+    CF.resetExportClientState();
     Object.keys(CF.charts).forEach((k) => {
       if (CF.charts[k]) { CF.charts[k].destroy(); delete CF.charts[k]; }
     });
@@ -1661,9 +1996,29 @@ const CF = {
     CF.closeResetAnalysisModal();
   },
 
+  maybeShowDemoLaunchHint() {
+    const pending = (sessionStorage.getItem('cf_demo_launch_pending') || '').trim();
+    if (!pending) return;
+    sessionStorage.removeItem('cf_demo_launch_pending');
+    CF.showDemoWorkspaceBanner(pending);
+    CF.toast('Click Load Sample Workspace to import the Atlas demo datasets.', 'info', 9000);
+  },
+
+  showDemoWorkspaceBanner(company) {
+    const el = document.getElementById('demo-workspace-banner');
+    if (!el) return;
+    const sub = document.getElementById('demo-workspace-label');
+    if (sub) sub.textContent = 'Datasets connected and ready for guided analysis';
+    el.classList.remove('hidden');
+  },
+
+  dismissDemoBanner() {
+    document.getElementById('demo-workspace-banner')?.classList.add('hidden');
+  },
+
   refreshCurrentPage() {
     const path = location.pathname;
-    if (path === '/') CF.loadDashboard();
+    if (path === '/dashboard') CF.loadDashboard();
     else if (path === '/imports') CF.loadImportHistory();
     else if (path === '/products') CF.loadProducts();
     else if (path === '/inventory') CF.loadInventory();
@@ -1673,23 +2028,137 @@ const CF = {
   },
 
   async loadDemoCompany(company) {
-    const label = company.charAt(0).toUpperCase() + company.slice(1);
-    CF.toast(`Loading ${label} demo…`, 'info', 12000);
+    CF.toast('Preparing operational analytics workspace...', 'info', 12000);
     try {
       const r = await CF.fetchJSON(`/api/admin/demo/load/${company}`, { method: 'POST' });
-      CF.clearLocalState();
+      CF.clearAnalysisViewReady();
+      CF.resetExportClientState();
       await CF.loadActiveDatasetsBar();
       await CF.refreshPlatformUI();
-      CF.toast(r.message || `${label} demo loaded`, 'success', 6000);
-      if (location.pathname !== '/') location.href = '/';
-      else CF.loadDashboard();
+      CF.toast(r.message || 'CommerceFlow workspace ready', 'success', 6000);
+      CF.showDemoWorkspaceBanner(company);
+      if (location.pathname !== '/dashboard') location.href = '/dashboard';
+      else await CF.loadDashboard();
+      CF.toast('Sample data is loaded. Click Run Your Analysis to view KPIs and charts.', 'info', 8000);
     } catch (e) {
-      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Demo load failed', 'error', 8000);
+      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Sample workspace load failed', 'error', 8000);
     }
+  },
+
+  initWorkspaceMode() {
+    const badge = document.querySelector('.workspace-badge');
+    CF.workspaceMode = badge?.dataset.workspaceMode || CF.workspaceMode || 'demo_workspace';
+    CF.applyWorkspaceMode();
+  },
+
+  applyWorkspaceMode(mode) {
+    if (mode) CF.workspaceMode = mode;
+    const cfg = CF.WORKSPACE_MODES[CF.workspaceMode] || CF.WORKSPACE_MODES.demo_workspace;
+    const title = document.getElementById('workspace-badge-title');
+    const subtitle = document.getElementById('workspace-badge-subtitle');
+    if (title) title.textContent = cfg.title;
+    if (subtitle) subtitle.textContent = cfg.subtitle;
+    document.documentElement.dataset.workspaceMode = CF.workspaceMode;
+    const bannerTitle = document.querySelector('.demo-workspace-title');
+    if (bannerTitle && CF.workspaceMode === 'demo_workspace') {
+      bannerTitle.textContent = cfg.title;
+    }
+  },
+
+  resetExportClientState() {
+    CF.stopExportPoll();
+    CF.exportDownloadedJobs.clear();
+    CF.exportState = {
+      canExport: false,
+      ready: false,
+      generating: false,
+      hasAnalysis: false,
+      lastJob: null,
+      latestWorkbook: null,
+    };
+    try {
+      sessionStorage.removeItem('cf_export_state');
+    } catch {
+      /* ignore */
+    }
+  },
+
+  persistExportState() {
+    try {
+      sessionStorage.setItem('cf_export_state', JSON.stringify({
+        canExport: CF.exportState.canExport,
+        ready: CF.exportState.ready,
+        generating: CF.exportState.generating,
+        hasAnalysis: CF.exportState.hasAnalysis,
+        lastJob: CF.exportState.lastJob,
+        latestWorkbook: CF.exportState.latestWorkbook,
+      }));
+    } catch {
+      /* ignore */
+    }
+  },
+
+  async hydrateExportState() {
+    try {
+      const meta = await CF.fetchJSON('/api/exports/meta');
+      CF.exportMeta = meta;
+      CF.exportState.hasAnalysis = !!meta.has_generated_analysis;
+      CF.exportState.canExport = !!(meta.has_selection && meta.has_generated_analysis);
+      CF.exportState.latestWorkbook = meta.latest_workbook || null;
+      CF.exportState.lastJob = meta.last_export || CF.exportState.lastJob;
+      CF.exportState.ready = !!(
+        CF.exportState.latestWorkbook?.ready
+        || CF.exportState.lastJob?.download_url
+      );
+      CF.persistExportState();
+      if (location.pathname === '/reports') CF.applyExportMetaToPage(meta);
+      return meta;
+    } catch {
+      return null;
+    }
+  },
+
+  applyExportMetaToPage(meta) {
+    if (!meta) return;
+    const rc = meta.row_counts || {};
+    const badges = document.getElementById('export-summary-badges');
+    if (badges) {
+      badges.innerHTML = [
+        `<span class="export-stat-badge"><strong>${CF.formatRowCount(rc.products)}</strong> products</span>`,
+        `<span class="export-stat-badge"><strong>${CF.formatRowCount(rc.sales)}</strong> sales rows</span>`,
+        `<span class="export-stat-badge"><strong>${CF.formatRowCount(rc.alerts)}</strong> alerts</span>`,
+        `<span class="export-stat-badge"><strong>${meta.enterprise_sheets || 5}</strong> sheets</span>`,
+      ].join('');
+    }
+    const total = meta.total_rows || 0;
+    document.getElementById('export-dataset-size')?.replaceChildren(document.createTextNode(
+      meta.has_selection ? `${CF.formatRowCount(total)} rows` : 'No selection'
+    ));
+    document.getElementById('export-est-size')?.replaceChildren(document.createTextNode(
+      meta.estimated_sizes?.enterprise?.human || '—'
+    ));
+    const last = meta.latest_workbook || meta.last_export;
+    document.getElementById('export-last-generated')?.replaceChildren(document.createTextNode(
+      last?.completed_at ? CF.formatDateTime(last.completed_at) : 'Not yet generated'
+    ));
+    const enterpriseBtn = document.getElementById('btn-enterprise-export');
+    if (enterpriseBtn) {
+      enterpriseBtn.disabled = !CF.exportState.canExport || CF.exportBusy || CF.exportState.generating;
+    }
+  },
+
+  triggerWorkbookDownload(workbook) {
+    return CF.downloadExportOnce({
+      id: workbook?.job_id,
+      download_url: workbook?.download_url,
+      filename: workbook?.filename,
+    });
   },
 
   exportMeta: null,
   exportPollTimer: null,
+  exportBusy: false,
+  exportDownloadedJobs: new Set(),
 
   EXPORT_CARDS: [
     { id: 'summary', title: 'Executive Summary', desc: 'KPIs, metric traces, and dashboard rollups from active datasets.', icon: 'chart' },
@@ -1725,29 +2194,11 @@ const CF = {
     if (!grid) return;
 
     try {
-      CF.exportMeta = await CF.fetchJSON('/api/exports/meta');
-      const m = CF.exportMeta;
+      const m = await CF.hydrateExportState();
+      if (!m) throw new Error('Could not load export metadata');
       const rc = m.row_counts || {};
 
-      document.getElementById('export-summary-badges').innerHTML = [
-        `<span class="export-stat-badge"><strong>${CF.formatRowCount(rc.products)}</strong> products</span>`,
-        `<span class="export-stat-badge"><strong>${CF.formatRowCount(rc.sales)}</strong> sales rows</span>`,
-        `<span class="export-stat-badge"><strong>${CF.formatRowCount(rc.alerts)}</strong> alerts</span>`,
-        `<span class="export-stat-badge"><strong>${m.enterprise_sheets || 5}</strong> sheets</span>`,
-      ].join('');
-
-      const total = m.total_rows || 0;
-      document.getElementById('export-dataset-size').textContent =
-        m.has_selection ? `${CF.formatRowCount(total)} rows` : 'No selection';
-      document.getElementById('export-est-size').textContent =
-        m.estimated_sizes?.enterprise?.human || '—';
-
-      const last = m.last_export;
-      document.getElementById('export-last-generated').textContent = last?.completed_at
-        ? CF.formatDateTime(last.completed_at)
-        : 'Not yet generated';
-
-      CF.setExportStatus('ready', 'Ready');
+      CF.setExportStatus(CF.exportState.ready ? 'ready' : 'idle', CF.exportState.ready ? 'Ready' : 'Awaiting export');
 
       if (!m.has_selection) {
         grid.classList.add('hidden');
@@ -1761,7 +2212,7 @@ const CF = {
         grid.classList.add('hidden');
         empty?.classList.remove('hidden');
         if (empty) {
-          empty.innerHTML = '<p class="text-white font-medium mb-2">No analysis generated yet</p><p class="text-sm text-slate-500 mb-4">Run Analysis to generate exportable intelligence.</p><button type="button" class="btn-primary" onclick="CF.openAnalysisModal()">Run Analysis</button>';
+          empty.innerHTML = '<p class="text-white font-medium mb-2">No analysis generated yet</p><p class="text-sm text-slate-500 mb-4">Run Your Analysis to generate exportable intelligence.</p><button type="button" class="btn-primary" onclick="CF.openAnalysisModal()">Run Your Analysis</button>';
         }
         document.getElementById('btn-enterprise-export').disabled = true;
         document.getElementById('export-last-generated').textContent = 'Not yet generated';
@@ -1770,7 +2221,7 @@ const CF = {
 
       empty?.classList.add('hidden');
       grid.classList.remove('hidden');
-      document.getElementById('btn-enterprise-export').disabled = false;
+      document.getElementById('btn-enterprise-export').disabled = CF.exportBusy || CF.exportState.generating;
 
       const est = m.estimated_sizes || {};
       grid.innerHTML = CF.EXPORT_CARDS.map((card) => {
@@ -1827,14 +2278,33 @@ const CF = {
     if (tit && title) tit.textContent = title;
   },
 
-  async startEnterpriseExport() {
-    await CF.startExportJob('enterprise', 'xlsx');
+  async startEnterpriseExport(opts = {}) {
+    if (CF.exportBusy || CF.exportState.generating) {
+      CF.toast('Export is already running. Please wait for the current download.', 'info');
+      return;
+    }
+    await CF.hydrateExportState();
+    const workbook = CF.exportState.latestWorkbook;
+    if (workbook?.ready && workbook.download_url && !opts.regenerate) {
+      const key = String(workbook.job_id || workbook.download_url);
+      CF.exportDownloadedJobs.delete(key);
+      if (CF.triggerWorkbookDownload(workbook)) return;
+    }
+    await CF.startExportJob('enterprise', 'xlsx', opts);
   },
 
-  async startExportJob(reportType, format) {
-    CF.showExportProgress(true);
-    CF.setExportStatus('running', 'Processing');
-    CF.updateExportProgress(0, 'Queuing export job…', 'Generating export…');
+  async startExportJob(reportType, format, opts = {}) {
+    if (CF.exportBusy) {
+      if (!opts.silent) CF.toast('Export is already running. Please wait for the current download.', 'info');
+      return;
+    }
+    CF.exportBusy = true;
+    CF.exportState.generating = true;
+    if (!opts.silent) {
+      CF.showExportProgress(true);
+      CF.setExportStatus('running', 'Processing');
+      CF.updateExportProgress(0, 'Queuing export job…', 'Generating export…');
+    }
     document.getElementById('btn-enterprise-export')?.setAttribute('disabled', 'true');
 
     try {
@@ -1843,54 +2313,109 @@ const CF = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ report_type: reportType, format }),
       });
-      await CF.pollExportJob(res.job.id, reportType);
+      CF.exportDownloadedJobs.delete(String(res.job.id));
+      await CF.pollExportJob(res.job.id, reportType, opts);
     } catch (e) {
       CF.setExportStatus('failed', 'Failed');
       CF.showExportProgress(false);
-      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Export failed', 'error');
+      if (!opts.silent) CF.toast(CF.parseApiError(e).split('\n')[0] || 'Export failed', 'error');
     } finally {
-      document.getElementById('btn-enterprise-export')?.removeAttribute('disabled');
+      CF.exportBusy = false;
+      CF.exportState.generating = false;
+      document.getElementById('btn-enterprise-export')?.toggleAttribute('disabled', !CF.exportState.canExport);
     }
   },
 
-  async pollExportJob(jobId, reportType) {
-    if (CF.exportPollTimer) clearInterval(CF.exportPollTimer);
+  stopExportPoll() {
+    if (CF.exportPollTimer) {
+      clearTimeout(CF.exportPollTimer);
+      CF.exportPollTimer = null;
+    }
+  },
 
-    const tick = async () => {
-      try {
-        const job = await CF.fetchJSON(`/api/exports/jobs/${jobId}`);
-        CF.updateExportProgress(job.progress || 0, job.message, `Exporting ${reportType.replace(/_/g, ' ')}…`);
+  pollExportJob(jobId, reportType, opts = {}) {
+    CF.stopExportPoll();
+    let finished = false;
+    let pollInFlight = false;
+    let downloadStarted = false;
 
-        if (job.status === 'completed') {
-          clearInterval(CF.exportPollTimer);
-          CF.exportPollTimer = null;
-          CF.updateExportProgress(100, 'Download starting…', 'Complete');
-          CF.setExportStatus('ready', 'Ready');
-          const a = document.createElement('a');
-          a.href = job.download_url;
-          a.download = job.filename || 'export.bin';
-          a.click();
-          CF.toast('Export ready — download started', 'success');
-          setTimeout(() => CF.showExportProgress(false), 1200);
-          CF.loadReports();
-          return;
-        }
-        if (job.status === 'failed') {
-          clearInterval(CF.exportPollTimer);
-          CF.exportPollTimer = null;
+    return new Promise((resolve, reject) => {
+      const tick = async () => {
+        if (finished || pollInFlight) return;
+        pollInFlight = true;
+        try {
+          const job = await CF.fetchJSON(`/api/exports/jobs/${jobId}`);
+          if (finished) return;
+
+          CF.updateExportProgress(job.progress || 0, job.message, `Exporting ${reportType.replace(/_/g, ' ')}…`);
+
+          if (job.status === 'completed') {
+            finished = true;
+            CF.stopExportPoll();
+            CF.updateExportProgress(100, 'Download starting…', 'Complete');
+            CF.setExportStatus('ready', 'Ready');
+            CF.exportState.lastJob = job;
+            CF.exportState.latestWorkbook = {
+              job_id: job.id,
+              filename: job.filename,
+              download_url: job.download_url,
+              completed_at: job.completed_at,
+              ready: true,
+            };
+            CF.exportState.ready = true;
+            CF.persistExportState();
+            if (!opts.silent && !downloadStarted) {
+              downloadStarted = true;
+              CF.downloadExportOnce(job);
+            }
+            setTimeout(() => CF.showExportProgress(false), 1200);
+            if (location.pathname === '/reports') CF.loadReports();
+            else CF.applyExportMetaToPage(CF.exportMeta);
+            resolve(job);
+            return;
+          }
+          if (job.status === 'failed') {
+            finished = true;
+            CF.stopExportPoll();
+            CF.setExportStatus('failed', 'Failed');
+            CF.showExportProgress(false);
+            const err = new Error(job.error || 'Export failed');
+            CF.toast(err.message, 'error');
+            reject(err);
+            return;
+          }
+        } catch (e) {
+          finished = true;
+          CF.stopExportPoll();
           CF.setExportStatus('failed', 'Failed');
           CF.showExportProgress(false);
-          CF.toast(job.error || 'Export failed', 'error');
+          reject(e);
+        } finally {
+          pollInFlight = false;
+          if (!finished) {
+            CF.exportPollTimer = setTimeout(tick, 800);
+          }
         }
-      } catch {
-        clearInterval(CF.exportPollTimer);
-        CF.setExportStatus('failed', 'Failed');
-        CF.showExportProgress(false);
-      }
-    };
+      };
 
-    await tick();
-    CF.exportPollTimer = setInterval(tick, 800);
+      void tick();
+    });
+  },
+
+  downloadExportOnce(job) {
+    if (!job?.download_url) return false;
+    const key = String(job.id || job.download_url);
+    if (CF.exportDownloadedJobs.has(key)) return false;
+    CF.exportDownloadedJobs.add(key);
+    const a = document.createElement('a');
+    a.href = job.download_url;
+    a.download = job.filename || 'export.bin';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    CF.toast('Export ready — download started', 'success');
+    return true;
   },
 
   async exportReport(type, format) {
@@ -1902,6 +2427,11 @@ const CF = {
       return CF.startExportJob(type, format);
     }
 
+    if (CF.exportBusy) {
+      CF.toast('Export is already running. Please wait for the current download.', 'info');
+      return;
+    }
+    CF.exportBusy = true;
     try {
       CF.setExportStatus('running', 'Processing');
       const res = await fetch(`/api/exports/${type}`, {
@@ -1932,6 +2462,8 @@ const CF = {
     } catch (e) {
       CF.setExportStatus('failed', 'Failed');
       CF.toast(CF.parseApiError(e).split('\n')[0] || 'Export failed', 'error');
+    } finally {
+      CF.exportBusy = false;
     }
   },
 };

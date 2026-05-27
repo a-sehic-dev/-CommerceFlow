@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.services.demo_loader_service import DEMO_COMPANIES, DemoLoaderService
+from app.services.demo_loader_service import DemoLoaderService, get_demo_companies
 from app.services.reset_service import ResetService
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -55,8 +55,9 @@ async def rebuild_analytics_engine(db: AsyncSession = Depends(get_db)):
 
 @router.post("/demo/load/{company}")
 async def load_demo_company(company: str, db: AsyncSession = Depends(get_db)):
-    if company.lower() not in DEMO_COMPANIES:
-        raise HTTPException(400, f"Unknown company. Choose: {', '.join(DEMO_COMPANIES)}")
+    companies = get_demo_companies()
+    if company.lower() not in companies and not companies:
+        raise HTTPException(404, "Evaluation workspace is temporarily unavailable.")
     try:
         service = DemoLoaderService(db)
         result = await service.load_company(company, fresh=True)

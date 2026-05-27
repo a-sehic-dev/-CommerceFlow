@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Workspace Guide{% endblock %}
+{% block page_title %}Workspace Guide{% endblock %}
+{% block page_subtitle %}How to import datasets, run analytics, and export operational reports{% endblock %}
+
+{% block content %}
+<section class="guide-hero">
+  <div>
+    <p class="guide-eyebrow">Getting Started</p>
+    <h2 class="guide-title">Build an operational analytics workspace in four steps.</h2>
+    <p class="guide-desc">
+      CommerceFlow turns sales, product, and inventory exports into dashboard KPIs, risk signals, alerts, and
+      executive reporting workflows.
+    </p>
+  </div>
+  <div class="guide-hero-actions">
+    <a href="/imports" class="btn-primary">Upload Business Data</a>
+    <a href="/dashboard" class="btn-secondary">Open dashboard</a>
+  </div>
+</section>
+
+<section class="guide-grid">
+  <article class="guide-card">
+    <span class="guide-step">01</span>
+    <h3>Importing datasets</h3>
+    <p>Upload three operational files: sales, products, and inventory. CommerceFlow classifies supported CSV/XLSX exports from column headers.</p>
+    <ul>
+      <li>Sales: orders, revenue, quantity, channel, sold date</li>
+      <li>Products: SKU, title, category, price, cost</li>
+      <li>Inventory: SKU, stock, reserved, aging, warehouse</li>
+    </ul>
+  </article>
+
+  <article class="guide-card guide-card-wide">
+    <span class="guide-step">02</span>
+    <h3>Running analysis</h3>
+    <p>Click <strong>Run Your Analysis</strong> and select one import for each dataset type. KPIs stay empty until you run it.</p>
+    <p class="guide-card-lead">For accurate results, you need:</p>
+    <ul>
+      <li><strong>Products</strong> — SKU + product name (price, cost, category help)</li>
+      <li><strong>Sales</strong> — revenue per row + <strong>order date</strong> + SKU (order ID and quantity help)</li>
+      <li><strong>Inventory</strong> — SKU + stock on hand</li>
+      <li><strong>Same SKU</strong> across all three files (matching codes, not different formats)</li>
+    </ul>
+    <p class="guide-card-note">CommerceFlow calculates from your numbers. Rules like low stock (≤14 days cover) or dead inventory (180+ days without sales) are standard thresholds — not demo data.</p>
+  </article>
+
+  <article class="guide-card">
+    <span class="guide-step">03</span>
+    <h3>Dashboard modules</h3>
+    <p>Use the sidebar modules to inspect the operational story behind the dashboard numbers.</p>
+    <ul>
+      <li>Executive Overview for KPIs and trends</li>
+      <li>Inventory Health for low stock, overstock, and dead inventory</li>
+      <li>Alerts and Profit Leakage for priority operational actions</li>
+    </ul>
+  </article>
+
+  <article class="guide-card">
+    <span class="guide-step">04</span>
+    <h3>Exporting reports</h3>
+    <p>Generate structured management exports for analysis handoff, founder updates, or operational review.</p>
+    <ul>
+      <li>Excel reports with executive summaries</li>
+      <li>CSV/JSON exports for downstream workflows</li>
+      <li>Traceable metrics from selected datasets</li>
+    </ul>
+  </article>
+</section>
+
+<section class="guide-support-card">
+  <div>
+    <p class="guide-eyebrow">Need help?</p>
+    <h3>Problems with imports or analysis?</h3>
+    <p>
+      Email your <strong>products</strong>, <strong>sales</strong>, and <strong>inventory</strong> files (or a small sample).
+      We will check column mapping and dataset setup so your analysis matches your real operations.
+    </p>
+  </div>
+  <a
+    class="btn-primary guide-support-btn"
+    href="mailto:{{ support_email }}?subject=CommerceFlow%20data%20review%20request"
+  >{{ support_email }}</a>
+</section>
+
+<section class="guide-demo-card">
+  <div>
+    <p class="guide-eyebrow">{{ workspace_title }}</p>
+    <h3>Want to evaluate without uploading files?</h3>
+    <p>Open a temporary analytics environment with example operational datasets and generate analytics intentionally.</p>
+  </div>
+  <button type="button" class="btn-primary" onclick="location.href='/dashboard?demo=atlas'">Load Sample Workspace</button>
+</section>
+{% endblock %}

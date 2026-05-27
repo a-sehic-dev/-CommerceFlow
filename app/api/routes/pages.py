@@ -1,11 +1,16 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import get_settings
+from app.utils.workspace_modes import workspace_context
 
 router = APIRouter(tags=["pages"])
 templates = Jinja2Templates(directory="templates")
+
+_LANDING_INDEX = Path("static/landing/index.html")
 
 
 def _page_ctx(request: Request, **extra: object) -> dict:
@@ -17,11 +22,24 @@ def _page_ctx(request: Request, **extra: object) -> dict:
         "founder_name": settings.founder_name,
         "founder_url": settings.founder_url,
         "product_version": settings.product_version,
+        "support_email": settings.assistant_alert_email,
+        **workspace_context(settings.workspace_mode),
         **extra,
     }
 
 
 @router.get("/", response_class=HTMLResponse)
+async def marketing_landing():
+    """Premium SaaS landing (React build)."""
+    if _LANDING_INDEX.is_file():
+        return FileResponse(_LANDING_INDEX, media_type="text/html")
+    return HTMLResponse(
+        "<h1>CommerceFlow</h1><p>Landing not built. Run: cd landing && npm install && npm run build</p>",
+        status_code=503,
+    )
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", _page_ctx(request, page="overview"))
 
@@ -54,3 +72,8 @@ async def imports_page(request: Request):
 @router.get("/reports", response_class=HTMLResponse)
 async def reports_page(request: Request):
     return templates.TemplateResponse("reports.html", _page_ctx(request, page="reports"))
+
+
+@router.get("/guide", response_class=HTMLResponse)
+async def guide_page(request: Request):
+    return templates.TemplateResponse("guide.html", _page_ctx(request, page="guide"))

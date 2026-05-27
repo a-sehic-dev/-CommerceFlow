@@ -9,9 +9,10 @@ class Settings(BaseSettings):
 
     app_name: str = "CommerceFlow"
     product_tagline: str = "Ecommerce Operations Intelligence"
-    founder_name: str = "Sedin Sehic"
-    founder_url: str = "https://github.com/a-sehic-dev"
+    founder_name: str = "Sedin Šehić"
+    founder_url: str = "https://www.linkedin.com/in/sedin-sehic-1134253a8/"
     product_version: str = "1.0.0"
+    workspace_mode: str = "demo_workspace"
     app_env: str = "development"
     debug: bool = True
     secret_key: str = "dev-secret-change-in-production"
@@ -22,8 +23,15 @@ class Settings(BaseSettings):
 
     analytics_cache_ttl_seconds: int = 300
     low_stock_threshold: int = 10
-    overstock_days: int = 90
-    dead_inventory_days: int = 120
+    # Inventory classification (see app/utils/inventory_classification.py)
+    dead_min_days_since_last_sale: int = 180
+    dead_max_velocity_90d: float = 0.05
+    slow_moving_min_days_since_last_sale: int = 60
+    slow_moving_max_days_since_last_sale: int = 179
+    slow_moving_max_velocity_90d: float = 0.15
+    overstock_min_days_cover: float = 90.0
+    overstock_target_days_cover: float = 90.0
+    low_stock_max_days_cover: float = 14.0
     margin_warning_pct: float = 15.0
 
     # Enterprise scale
@@ -36,6 +44,19 @@ class Settings(BaseSettings):
     fuzzy_duplicate_max_rows: int = 8_000
     export_max_rows_per_sheet: int = 100_000
     ui_table_page_size: int = 50
+
+    # AI assistant
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4.1-mini"
+    assistant_session_limit: int = 8
+    assistant_ip_limit: int = 30
+    assistant_cooldown_seconds: float = 2.5
+    assistant_alert_email: str = "commerceflow.platform@gmail.com"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
 
     @property
     def max_upload_bytes(self) -> int:

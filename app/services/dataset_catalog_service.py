@@ -6,19 +6,29 @@ from app.models.inventory import InventoryRecord
 from app.models.product import Product
 from app.models.sales import SalesRecord
 from app.schemas.datasets import ImportCatalogItem, ImportCatalogResponse
-from app.services.dataset_classifier import type_label
-from app.utils.dataset_display import detect_company_name, is_internal_dataset, resolve_display_name
+from app.utils.dataset_display import (
+    dataset_source_label,
+    detect_company_name,
+    format_dataset_metadata,
+    is_internal_dataset,
+    module_engine_title,
+    module_status_label,
+    resolve_display_name,
+)
 
 
 def _format_label(filename: str, rows: int, started_at) -> str:
     ts = started_at.strftime("%I:%M %p") if started_at else ""
-    return f"{filename} ({rows} rows • {ts})"
+    return f"{filename} (operational dataset • {ts})"
 
 
-def _format_subtitle(rows: int, started_at, dtype: str) -> str:
-    ts = started_at.strftime("%b %d, %I:%M %p") if started_at else ""
-    label = type_label(dtype)
-    return f"{rows} rows • imported {ts} • {label}"
+def _format_subtitle(rows: int, started_at, dtype: str, filename: str) -> str:
+    return format_dataset_metadata(
+        rows=rows,
+        started_at=started_at,
+        filename=filename,
+        dataset_type=dtype,
+    )
 
 
 def _eligible_types(counts: dict[str, int]) -> list[str]:
@@ -61,13 +71,16 @@ def build_catalog_item(record: ImportRecord, counts: dict[str, int]) -> ImportCa
     dtype = stored if stored in ("products", "sales", "inventory", "mixed") else _primary_type(counts)
     rows = total_rows or record.success_count or record.row_count
     eligible = _catalog_eligible(record, counts)
-    display = resolve_display_name(record.filename)
+    display = resolve_display_name(record.filename, dtype)
     company = detect_company_name(record.filename)
     return ImportCatalogItem(
         id=record.id,
         filename=record.filename,
         display_name=display,
         company_name=company,
+        source_label=dataset_source_label(record.filename),
+        engine_title=module_engine_title(dtype),
+        status_label=module_status_label(dtype),
         dataset_type=dtype,
         status=record.status,
         row_count=record.row_count,
@@ -78,7 +91,7 @@ def build_catalog_item(record: ImportRecord, counts: dict[str, int]) -> ImportCa
         started_at=record.started_at,
         label=_format_label(display, rows, record.started_at),
         eligible_for=eligible,
-        subtitle=_format_subtitle(rows, record.started_at, dtype),
+        subtitle=_format_subtitle(rows, record.started_at, dtype, record.filename),
         detection_confidence=record.detection_confidence,
         needs_type_confirmation=bool(record.needs_type_confirmation),
     )

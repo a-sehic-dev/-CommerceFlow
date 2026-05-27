@@ -26,11 +26,7 @@ from app.utils.cache import analytics_cache
 from app.utils.json_safe import sanitize_for_json
 
 
-def _cache_key(selection: dict) -> str:
-    p = selection.get("products_import_id") or 0
-    s = selection.get("sales_import_id") or 0
-    i = selection.get("inventory_import_id") or 0
-    return f"analysis_{p}_{s}_{i}"
+from app.utils.analysis_selection import analysis_cache_key as _cache_key
 
 STAGE_LABELS = {
     "loading_dataset": "Loading dataset…",
@@ -177,15 +173,25 @@ class AnalyticsOrchestrator:
         # ── Stage 2: Validate schema ──
         stage = "validating_schema"
         t_stage = time.perf_counter()
-        validation = validate_datasets(products_df, sales_df, inventory_df)
+        validation = validate_datasets(
+            products_df,
+            sales_df,
+            inventory_df,
+            selection=selection,
+        )
         try:
             if validation.warnings:
                 for w in validation.warnings:
                     log_stage(stage, f"warning: {w}")
+            if validation.errors:
+                for err in validation.errors:
+                    log_stage(stage, f"error: {err}")
             self._record_stage(
                 stage,
-                "completed" if validation.valid or dataset_info["row_counts"]["products"] > 0 else "warning",
-                "; ".join(validation.warnings[:3]) if validation.warnings else "Schema OK",
+                "completed" if validation.valid else "failed",
+                validation.errors[0]
+                if validation.errors
+                else ("; ".join(validation.warnings[:3]) if validation.warnings else "Schema OK"),
                 (time.perf_counter() - t_stage) * 1000,
                 validation.to_dict(),
             )
@@ -193,11 +199,10 @@ class AnalyticsOrchestrator:
             self._record_stage(stage, "failed", str(exc), (time.perf_counter() - t_stage) * 1000)
             self._record_error(stage, exc)
 
-        if not validation.valid and all(
-            dataset_info["row_counts"].get(k, 0) == 0 for k in ("products", "sales", "inventory")
-        ):
+        if not validation.valid:
+            message = validation.errors[0] if validation.errors else "Dataset validation failed."
             return self._failure_response(
-                "No data available for analysis. Import CSV/XLSX files first.",
+                message,
                 dataset_info,
                 validation=validation.to_dict(),
             )
@@ -325,8 +330,21 @@ class AnalyticsOrchestrator:
         )
         if success and serialized:
             from app.services.analysis_state import AnalysisStateService
+            from app.services.analytics_snapshot_service import AnalyticsSnapshotService
 
-            await AnalysisStateService(self.session).mark_generated()
+            try:
+                snap_svc = AnalyticsSnapshotService(self.session)
+                unified = await snap_svc.build_unified(selection, analysis=serialized)
+                await snap_svc.persist_unified(selection, unified)
+                await AnalysisStateService(self.session).mark_generated()
+            except Exception as exc:
+                self._record_error("unified_snapshot", exc)
+                success = False
+                self._record_stage(
+                    "unified_snapshot",
+                    "failed",
+                    f"Dashboard snapshot failed: {exc}",
+                )
         return sanitize_for_json({
             "success": success,
             "cached": False,

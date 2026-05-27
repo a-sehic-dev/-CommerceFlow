@@ -16,7 +16,7 @@ Lokalno (`127.0.0.1`) **samo ti vidiš**. Za LinkedIn treba **javni HTTPS URL**.
 Otvori svoj URL → **Load live demo** (gumb na dashboardu) ili:
 
 ```bash
-curl -X POST https://TVOJ-URL.onrender.com/api/admin/demo/load/apple
+curl -X POST https://TVOJ-URL.onrender.com/api/admin/demo/load/atlas
 ```
 
 Zatim **Run Analysis** u UI-u.

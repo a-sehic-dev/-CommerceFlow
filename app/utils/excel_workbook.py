@@ -26,7 +26,7 @@ from app.utils.excel_polish import (
     write_executive_charts,
 )
 
-ENGINE_VERSION = "CommerceFlow 1.0.0 · Sedin Sehic"
+ENGINE_VERSION = "CommerceFlow 1.0.0 · Sedin Šehić"
 EXEC_COLS = 12  # A–L presentation canvas
 
 # ── Theme ────────────────────────────────────────────────────────────────────
@@ -730,7 +730,12 @@ def _write_formatted_table(
                 cell.fill = stripe
 
             fmt = column_formats[col_idx - 1] if col_idx - 1 < len(column_formats) else GENERAL_FMT
-            if fmt == PCT_FMT and isinstance(cell.value, (int, float)):
+            header_name = headers[col_idx - 1] if col_idx - 1 < len(headers) else ""
+            if fmt == PCT_FMT and "margin" in str(header_name).lower():
+                from app.utils.margin_display import margin_percent_excel_value
+
+                cell.value, fmt = margin_percent_excel_value(cell.value)
+            elif fmt == PCT_FMT and isinstance(cell.value, (int, float)):
                 cell.value = _excel_percent(cell.value)
             elif fmt == CURRENCY_FMT and isinstance(cell.value, (int, float)):
                 cell.value = float(cell.value)
@@ -814,6 +819,26 @@ def _products_dataframe(records: list[dict]) -> pd.DataFrame:
 
 def _inventory_dataframe(analysis: dict, inventory_rows: list[dict]) -> pd.DataFrame:
     inv_risk = analysis.get("inventory_risk", {})
+    risk_rows = inv_risk.get("risk_rows") or []
+    if risk_rows:
+        base = pd.DataFrame(risk_rows)
+        rename = {
+            "sku": "SKU",
+            "product_name": "Product",
+            "stock_on_hand": "Stock On Hand",
+            "days_since_last_sale": "Days Since Last Sale",
+            "sales_velocity_30d": "Velocity 30d (u/day)",
+            "sales_velocity_90d": "Velocity 90d (u/day)",
+            "days_of_cover": "Days of Cover",
+            "inventory_value": "Inventory Value",
+            "unit_cost": "Unit Cost",
+            "classification": "Classification",
+            "classification_reason": "Classification Reason",
+        }
+        cols = [rename.get(c, c) for c in base.columns]
+        base.columns = cols
+        return base.loc[:, ~base.columns.duplicated()]
+
     inv_records: list[dict] = []
     for alert in inv_risk.get("alerts", []):
         inv_records.append({
@@ -905,8 +930,10 @@ def _apply_typed_value(cell: Any, value: Any, kind: str) -> None:
             cell.value = abs(float(value))
             cell.number_format = CURRENCY_FMT
         elif kind == "percent":
-            cell.value = _excel_percent(value)
-            cell.number_format = PCT_FMT
+            from app.utils.margin_display import margin_percent_excel_value
+
+            cell.value, cell.number_format = margin_percent_excel_value(value)
+            return
         elif kind == "count":
             cell.value = int(float(value))
             cell.number_format = COUNT_FMT

@@ -1,6 +1,7 @@
 from app.models.active_analysis import ActiveAnalysisConfig
 from app.models.alert import Alert
 from app.models.analytics_snapshot import AnalyticsSnapshot
+from app.models.feedback import FeedbackEntry
 from app.models.import_record import ImportRecord
 from app.models.inventory import InventoryRecord
 from app.models.organization import Organization
@@ -16,6 +17,7 @@ __all__ = [
     "ImportRecord",
     "Alert",
     "AnalyticsSnapshot",
+    "FeedbackEntry",
     "User",
     "Organization",
 ]

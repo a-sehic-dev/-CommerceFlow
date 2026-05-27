@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Generate enterprise-style demo XLSX packs for Nike, Apple, and Zara."""
+"""Legacy generator for brand-style demo XLSX packs (deprecated).
+
+Public guest demo uses Atlas only — see scripts/generate_atlas_demo.py.
+"""
 from __future__ import annotations
 
 import random
@@ -17,9 +20,9 @@ np.random.seed(42)
 
 COMPANIES = {
     "nike": {
-        "sales_file": "sales_nike_q1_2025.xlsx",
-        "products_file": "products_nike_catalog.xlsx",
-        "inventory_file": "inventory_nike_warehouse.xlsx",
+        "sales_file": "nike_sales_q1_2025.xlsx",
+        "products_file": "nike_products.xlsx",
+        "inventory_file": "nike_inventory.xlsx",
         "prefix": "NIKE",
         "currency": "USD",
         "regions": ["North America", "EMEA", "APAC", "LATAM"],
@@ -41,9 +44,9 @@ COMPANIES = {
         "product_count": 920,
     },
     "apple": {
-        "sales_file": "sales_apple_store_q1_2025.xlsx",
-        "products_file": "products_apple_catalog.xlsx",
-        "inventory_file": "inventory_apple_warehouse.xlsx",
+        "sales_file": "apple_sales_q1_2025.xlsx",
+        "products_file": "apple_products.xlsx",
+        "inventory_file": "apple_inventory.xlsx",
         "prefix": "AAPL",
         "currency": "USD",
         "regions": ["Americas", "Europe", "Greater China", "Japan", "Rest of Asia Pacific"],
@@ -67,9 +70,9 @@ COMPANIES = {
         "product_count": 640,
     },
     "zara": {
-        "sales_file": "sales_zara_global_q1_2025.xlsx",
-        "products_file": "products_zara_catalog.xlsx",
-        "inventory_file": "inventory_zara_warehouse.xlsx",
+        "sales_file": "zara_sales_q1_2025.xlsx",
+        "products_file": "zara_products.xlsx",
+        "inventory_file": "zara_inventory.xlsx",
         "prefix": "ZARA",
         "currency": "EUR",
         "regions": ["Spain", "France", "UK", "Germany", "US", "UAE", "Mexico"],

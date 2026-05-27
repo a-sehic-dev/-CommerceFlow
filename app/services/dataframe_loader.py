@@ -264,3 +264,34 @@ class DataframeLoader:
             return pd.DataFrame()
         df = pd.DataFrame([{"date": str(r.date), "revenue": float(r.revenue or 0)} for r in rows])
         return df.sort_values("date")
+
+    async def load_sales_category_revenue(
+        self,
+        sales_import_id: int,
+        products_import_id: int,
+        *,
+        limit_categories: int = 12,
+    ) -> pd.DataFrame:
+        """SQL aggregation for category mix charts — no full sales table scan."""
+        category_expr = func.coalesce(Product.category, "Uncategorized")
+        result = await self.session.execute(
+            select(
+                category_expr.label("category"),
+                func.sum(SalesRecord.revenue).label("revenue"),
+            )
+            .select_from(SalesRecord)
+            .join(
+                Product,
+                (SalesRecord.sku == Product.sku) & (Product.import_id == products_import_id),
+            )
+            .where(SalesRecord.import_id == sales_import_id)
+            .group_by(category_expr)
+            .order_by(func.sum(SalesRecord.revenue).desc())
+            .limit(limit_categories)
+        )
+        rows = result.all()
+        if not rows:
+            return pd.DataFrame()
+        return pd.DataFrame(
+            [{"category": str(r.category or "Uncategorized"), "revenue": float(r.revenue or 0)} for r in rows]
+        )

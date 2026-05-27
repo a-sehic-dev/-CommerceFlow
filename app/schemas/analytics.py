@@ -46,6 +46,7 @@ class ImportStatusResponse(BaseModel):
     filename: str
     display_name: str = ""
     company_name: str | None = None
+    source_label: str = "Uploaded"
     source_type: str
     dataset_type: str = "unknown"
     detection_confidence: float | None = None

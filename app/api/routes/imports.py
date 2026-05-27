@@ -17,7 +17,12 @@ from app.services.import_registry import has_active_imports, is_filename_busy
 from app.services.import_runner import import_runner
 from app.services.import_service import ImportService
 from app.utils.cache import analytics_cache
-from app.utils.dataset_display import detect_company_name, is_internal_dataset, resolve_display_name
+from app.utils.dataset_display import (
+    dataset_source_label,
+    detect_company_name,
+    is_internal_dataset,
+    resolve_display_name,
+)
 from app.utils.file_types import is_supported_upload
 
 router = APIRouter(prefix="/api/imports", tags=["imports"])
@@ -39,8 +44,9 @@ def _import_response(record: ImportRecord) -> ImportStatusResponse:
     return ImportStatusResponse(
         id=record.id,
         filename=record.filename,
-        display_name=resolve_display_name(record.filename),
+        display_name=resolve_display_name(record.filename, record.dataset_type),
         company_name=detect_company_name(record.filename),
+        source_label=dataset_source_label(record.filename),
         source_type=record.source_type,
         dataset_type=record.dataset_type or "unknown",
         detection_confidence=record.detection_confidence,

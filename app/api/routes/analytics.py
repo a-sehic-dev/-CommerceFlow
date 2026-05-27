@@ -112,6 +112,9 @@ async def run_analysis(body: AnalysisRunRequest, db: AsyncSession = Depends(get_
     active_svc = ActiveDatasetService(db)
     await active_svc.set_active(**selection)
     analytics_cache.invalidate()
+    from app.services.export_job_service import export_jobs
+
+    export_jobs.clear_all()
 
     orchestrator = AnalyticsOrchestrator(db)
     options = {
@@ -141,7 +144,7 @@ async def full_analysis(db: AsyncSession = Depends(get_db)):
             status_code=422,
             content={
                 "success": False,
-                "message": "No active datasets. Open Run Analysis and select imports.",
+                "message": "No active datasets. Run Your Analysis and select imports.",
             },
         )
     if not await AnalysisStateService(db).has_generated_analysis():
@@ -149,7 +152,7 @@ async def full_analysis(db: AsyncSession = Depends(get_db)):
             status_code=422,
             content=sanitize_for_json({
                 "success": False,
-                "message": "No analysis generated yet. Run Analysis to build results.",
+                "message": "No analysis generated yet. Run Your Analysis to build results.",
                 "requires_analysis_generation": True,
             }),
         )
@@ -163,6 +166,14 @@ async def full_analysis(db: AsyncSession = Depends(get_db)):
     if not pipeline.get("success") and pipeline.get("result") is None:
         return JSONResponse(status_code=422, content=sanitize_for_json(pipeline))
     return sanitize_for_json(pipeline.get("result") or {})
+
+
+@router.get("/public/preview")
+async def public_analytics_preview():
+    """Marketing-site preview KPIs (Atlas build-time snapshot — same schema as unified exports)."""
+    from app.services.analytics_snapshot_service import AnalyticsSnapshotService
+
+    return sanitize_for_json(AnalyticsSnapshotService.marketing_preview())
 
 
 @router.get("/dashboard")
@@ -202,7 +213,7 @@ async def _module_result(db: AsyncSession, key: str):
     if not active.has_selection:
         raise HTTPException(
             422,
-            detail="No active datasets selected. Use Run Analysis to choose imports.",
+            detail="No active datasets selected. Run Your Analysis to choose imports.",
         )
     if not await AnalysisStateService(db).has_generated_analysis():
         empty = dict(EMPTY_MODULE_PAYLOADS.get(key, {}))

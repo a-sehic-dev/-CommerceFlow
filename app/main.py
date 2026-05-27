@@ -8,7 +8,7 @@ from fastapi.encoders import ENCODERS_BY_TYPE
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import admin, alerts, analytics, exports, imports, pages
+from app.api.routes import admin, alerts, analytics, assistant, exports, feedback, imports, pages
 from app.config import ensure_directories, get_settings
 from app.database import init_db
 from app.utils.app_timezone import as_local_iso
@@ -23,6 +23,19 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     ensure_directories()
     await init_db()
+    from app.utils.cache import analytics_cache
+
+    analytics_cache.invalidate()
+    from app.utils.chart_images import charts_available
+
+    log = logging.getLogger("commerceflow")
+    if charts_available():
+        log.info("Executive workbook charts: matplotlib Agg backend ready")
+    else:
+        log.warning(
+            "Executive workbook charts: matplotlib/Pillow not available — "
+            "run .venv\\Scripts\\pip install -r requirements.txt and restart with .venv\\Scripts\\python.exe run.py"
+        )
     yield
 
 
@@ -39,10 +52,12 @@ def create_app() -> FastAPI:
 
     app.include_router(pages.router)
     app.include_router(admin.router)
+    app.include_router(assistant.router)
     app.include_router(imports.router)
     app.include_router(analytics.router)
     app.include_router(alerts.router)
     app.include_router(exports.router)
+    app.include_router(feedback.router)
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):

@@ -8,6 +8,9 @@ class ImportCatalogItem(BaseModel):
     filename: str
     display_name: str = ""
     company_name: str | None = None
+    source_label: str = "Uploaded"
+    engine_title: str = ""
+    status_label: str = ""
     dataset_type: str
     status: str
     row_count: int

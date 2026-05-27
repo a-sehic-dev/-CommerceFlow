@@ -45,7 +45,7 @@ class ProfitLeakageEngine:
 
         if inventory_df is not None and not inventory_df.empty:
             issues.extend(
-                self._dead_inventory_impact(products_df, inventory_df, settings)
+                self._dead_inventory_impact(products_df, inventory_df, settings, sales_df)
             )
             issues.extend(
                 self._overstock_holding_cost(products_df, inventory_df, sales_df, settings)
@@ -256,31 +256,47 @@ class ProfitLeakageEngine:
         return results
 
     def _dead_inventory_impact(
-        self, products_df: pd.DataFrame, inventory_df: pd.DataFrame, settings
+        self,
+        products_df: pd.DataFrame,
+        inventory_df: pd.DataFrame,
+        settings,
+        sales_df: pd.DataFrame | None = None,
     ) -> list[dict]:
+        from app.utils.inventory_classification import classify_inventory
+
         results = []
-        stale = inventory_df[inventory_df.get("days_in_stock", 0) >= settings.dead_inventory_days]
-        if stale.empty:
+        if inventory_df.empty:
             return results
-        price_map = (
-            products_df.set_index("sku")["price"].to_dict() if not products_df.empty else {}
+        classified = classify_inventory(
+            inventory_df,
+            sales_df if sales_df is not None else pd.DataFrame(),
+            products_df,
+            settings,
         )
+        if classified.dead.empty:
+            return results
         title_map = (
             products_df.set_index("sku")["title"].to_dict() if not products_df.empty else {}
         )
-        for _, row in stale.iterrows():
+        for _, row in classified.dead.iterrows():
             sku = row.get("sku", "")
-            value = float(price_map.get(sku, 0) or 0) * int(row.get("quantity_on_hand", 0) or 0)
+            value = float(row.get("inventory_value", 0) or 0)
             impact = value * self.DEAD_INVENTORY_RECOVERY_RATE
             if impact <= 0:
                 continue
+            days_sl = row.get("days_since_last_sale")
+            vel90 = float(row.get("sales_velocity_90d", 0) or 0)
             results.append({
                 "type": "dead_inventory",
                 "sku": sku,
-                "title": title_map.get(sku, ""),
+                "title": title_map.get(sku, row.get("product_name", "")),
                 "score": 90,
                 "estimated_impact": round(impact, 2),
-                "message": f"Dead inventory {row.get('days_in_stock', 0)}+ days (${value:,.0f} at risk, 25% recoverable)",
+                "message": (
+                    f"Dead inventory — {days_sl}d since last sale, "
+                    f"90d velocity {vel90:.3f} u/day "
+                    f"(${value:,.0f} at cost, 25% recoverable)"
+                ),
                 "recommendation": "Liquidate, bundle, or discount strategically",
             })
         return results
@@ -292,40 +308,38 @@ class ProfitLeakageEngine:
         sales_df: pd.DataFrame,
         settings,
     ) -> list[dict]:
-        results = []
-        velocity = {}
-        if not sales_df.empty:
-            sales_df = sales_df.copy()
-            if "sold_at" in sales_df.columns:
-                sales_df["sold_at"] = pd.to_datetime(sales_df["sold_at"], errors="coerce")
-                days = max((sales_df["sold_at"].max() - sales_df["sold_at"].min()).days, 1)
-            else:
-                days = 30
-            velocity = (sales_df.groupby("sku")["quantity"].sum() / days).to_dict()
+        from app.utils.inventory_classification import classify_inventory
 
-        price_map = products_df.set_index("sku")["price"].to_dict() if not products_df.empty else {}
-        overstock = inventory_df[
-            (inventory_df.get("days_in_stock", 0).fillna(0) >= settings.overstock_days)
-        ]
-        for _, row in overstock.iterrows():
+        results = []
+        if inventory_df.empty:
+            return results
+        classified = classify_inventory(inventory_df, sales_df, products_df, settings)
+        if classified.overstock.empty:
+            return results
+        title_map = (
+            products_df.set_index("sku")["title"].to_dict() if not products_df.empty else {}
+        )
+        daily_rate = self.HOLDING_COST_ANNUAL_RATE / 365
+        for _, row in classified.overstock.iterrows():
             sku = row.get("sku", "")
-            daily_vel = float(velocity.get(sku, 0))
-            if daily_vel >= 0.1:
-                continue
-            qty = int(row.get("quantity_on_hand", 0) or 0)
-            unit_price = float(price_map.get(sku, 0) or 0)
-            holding_value = unit_price * qty
-            excess_days = max(int(row.get("days_in_stock", 0) or 0) - settings.overstock_days, 0)
-            daily_rate = self.HOLDING_COST_ANNUAL_RATE / 365
-            impact = holding_value * daily_rate * excess_days
+            exposure = float(row.get("overstock_value", 0) or 0)
+            cover = row.get("days_of_cover")
+            excess_days = 0.0
+            if cover is not None and cover != float("inf"):
+                excess_days = max(float(cover) - 90.0, 0)
+            impact = exposure * daily_rate * max(excess_days, 1.0)
             if impact <= 0:
                 continue
             results.append({
                 "type": "overstock",
                 "sku": sku,
+                "title": title_map.get(sku, row.get("product_name", "")),
                 "score": 60,
                 "estimated_impact": round(impact, 2),
-                "message": f"Overstock holding cost estimate ({excess_days} excess days)",
+                "message": (
+                    f"Overstock exposure ${exposure:,.0f} "
+                    f"({row.get('excess_units', 0):.0f} excess units at cost)"
+                ),
                 "recommendation": "Reduce purchase orders and run clearance",
             })
         return results

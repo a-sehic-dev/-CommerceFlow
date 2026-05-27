@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0b1020;
+  color: #f1f5f9;
+}
+
+.bg-mesh {
+  background-color: #0b1020;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -20%, rgba(99, 102, 241, 0.16), transparent 62%),
+    radial-gradient(ellipse 55% 38% at 100% 42%, rgba(37, 99, 235, 0.10), transparent 65%),
+    radial-gradient(ellipse 50% 32% at 0% 75%, rgba(30, 64, 175, 0.13), transparent 68%),
+    linear-gradient(180deg, #10162a 0%, #0d1428 42%, #111a33 100%);
+}
+
+@layer components {
+  .section-pad {
+    @apply mx-auto max-w-6xl px-5 sm:px-8;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_34px_rgba(79,70,229,0.28)] transition hover:bg-indigo-500 hover:shadow-[0_14px_40px_rgba(79,70,229,0.34)];
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#17203b]/70 px-5 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-indigo-400/40 hover:bg-[#1f2a4a];
+  }
+  .glass-card {
+    @apply rounded-2xl border border-white/[0.09] bg-[rgba(23,32,59,0.72)] shadow-card backdrop-blur-xl;
+  }
+}

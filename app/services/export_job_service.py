@@ -39,6 +39,7 @@ class ExportJob:
     created_at: str = field(default_factory=lambda: as_local_iso(now_local()) or "")
     completed_at: str | None = None
     duration_ms: float | None = None
+    analysis_fingerprint: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -90,8 +91,19 @@ class ExportJobStore:
         self._jobs.clear()
         self._last_completed = None
 
-    async def create(self, report_type: str, fmt: str) -> ExportJob:
-        job = ExportJob(id=uuid.uuid4().hex[:12], report_type=report_type, format=fmt)
+    async def create(
+        self,
+        report_type: str,
+        fmt: str,
+        *,
+        analysis_fingerprint: str | None = None,
+    ) -> ExportJob:
+        job = ExportJob(
+            id=uuid.uuid4().hex[:12],
+            report_type=report_type,
+            format=fmt,
+            analysis_fingerprint=analysis_fingerprint,
+        )
         async with self._lock:
             self._jobs[job.id] = job
         asyncio.create_task(_run_job(job.id))

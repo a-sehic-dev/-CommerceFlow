@@ -73,7 +73,7 @@ class ResetService:
         return {
             "success": True,
             "action": "reset_analysis",
-            "message": "Analysis results cleared. Run Analysis when you are ready to refresh the dashboard.",
+            "message": "Analysis results cleared. Run Your Analysis when you are ready to refresh the dashboard.",
             "deleted": {
                 "alerts": alerts_deleted,
                 "analytics_snapshots": snapshots_deleted,
@@ -102,7 +102,7 @@ class ResetService:
         alert_count = await self._scalar_count(Alert)
         active = await self._active_has_selection()
         has_analysis = await AnalysisStateService(self.session).has_generated_analysis()
-        from app.services.demo_loader_service import DEMO_COMPANIES
+        from app.services.demo_loader_service import get_demo_companies
 
         return {
             "has_imports": import_count > 0,
@@ -112,7 +112,7 @@ class ResetService:
             "import_count": import_count,
             "alert_count": alert_count,
             "demo_files_ready": self._demo_files_ready(),
-            "demo_companies": list(DEMO_COMPANIES.keys()),
+            "demo_companies": list(get_demo_companies().keys()),
         }
 
     async def _delete_imported_data(self) -> dict:
@@ -203,13 +203,9 @@ class ResetService:
             logger.debug("Export job store clear skipped: %s", exc)
 
     def _demo_files_ready(self) -> bool:
-        from app.services.demo_loader_service import DEMO_COMPANIES, DEMO_DIR
+        from app.services.demo_loader_service import get_demo_companies
 
-        for files in DEMO_COMPANIES.values():
-            for name in files.values():
-                if not (DEMO_DIR / name).is_file():
-                    return False
-        return True
+        return bool(get_demo_companies())
 
     async def _scalar_count(self, model) -> int:
         result = await self.session.execute(select(func.count()).select_from(model))

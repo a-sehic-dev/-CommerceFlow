@@ -14,9 +14,7 @@ from app.services.import_service import ImportService
 DEMO = ROOT / "data" / "demo_companies"
 
 SETS = [
-    ("nike", "products_nike_catalog.xlsx", "inventory_nike_warehouse.xlsx", "sales_nike_q1_2025.xlsx"),
-    ("apple", "products_apple_catalog.xlsx", "inventory_apple_warehouse.xlsx", "sales_apple_store_q1_2025.xlsx"),
-    ("zara", "products_zara_catalog.xlsx", "inventory_zara_warehouse.xlsx", "sales_zara_global_q1_2025.xlsx"),
+    ("atlas", "atlas_products.xlsx", "atlas_inventory.xlsx", "atlas_sales_q1_2026.xlsx"),
 ]
 
 

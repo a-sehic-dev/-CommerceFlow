@@ -1,6 +1,6 @@
 import csv
 import json
-from app.utils.app_timezone import filename_timestamp, naive_local_now
+from app.utils.app_timezone import as_local_iso, filename_timestamp, naive_local_now
 from io import BytesIO
 from pathlib import Path
 
@@ -46,10 +46,13 @@ class ExportService:
         total_rows = counts.get("products", 0) + counts.get("sales", 0) + counts.get("inventory", 0)
 
         from app.services.analysis_state import AnalysisStateService
+        from app.services.analytics_snapshot_service import AnalyticsSnapshotService
         from app.services.export_job_service import export_jobs
 
         has_analysis = await AnalysisStateService(self.session).has_generated_analysis()
+        current_id = await AnalyticsSnapshotService(self.session).current_analysis_id()
         last = export_jobs.last_completed() if has_analysis else None
+        latest_workbook = self._resolve_latest_workbook(has_analysis, last, current_id)
         estimates = {
             "enterprise": self._estimate_bytes(counts, "xlsx", enterprise=True),
             "summary": self._estimate_bytes(counts, "xlsx"),
@@ -70,9 +73,51 @@ class ExportService:
             "sheet_names": list(self.ENTERPRISE_SHEETS),
             "estimated_sizes": estimates,
             "last_export": last.to_dict() if last else None,
+            "latest_workbook": latest_workbook,
+            "analysis_id": current_id,
             "async_recommended": counts.get("sales", 0) > self.settings.sales_aggregate_above_rows
                 or total_rows > 100_000,
         }
+
+    def _resolve_latest_workbook(
+        self,
+        has_analysis: bool,
+        last_job,
+        current_analysis_id: str | None,
+    ) -> dict | None:
+        """Only expose exports generated for the current analysis fingerprint."""
+        if not has_analysis or not current_analysis_id:
+            return None
+
+        if not last_job or not last_job.file_path or not Path(last_job.file_path).is_file():
+            return None
+
+        job_fingerprint = getattr(last_job, "analysis_fingerprint", None)
+        if job_fingerprint and job_fingerprint != current_analysis_id:
+            return None
+
+        return {
+            "job_id": last_job.id,
+            "filename": last_job.filename or Path(last_job.file_path).name,
+            "download_url": f"/api/exports/jobs/{last_job.id}/download",
+            "completed_at": last_job.completed_at,
+            "ready": True,
+            "source": "job",
+            "analysis_id": job_fingerprint or current_analysis_id,
+        }
+
+    async def resolve_latest_workbook_path(self) -> tuple[Path, str] | None:
+        from app.services.export_job_service import export_jobs
+
+        meta = await self.get_export_meta()
+        workbook = meta.get("latest_workbook")
+        if not workbook or not workbook.get("ready"):
+            return None
+
+        last = export_jobs.last_completed()
+        if last and last.file_path and Path(last.file_path).is_file():
+            return Path(last.file_path), last.filename or Path(last.file_path).name
+        return None
 
     def _estimate_bytes(self, counts: dict, fmt: str, *, enterprise: bool = False, small: bool = False) -> dict:
         rows = sum(counts.get(k, 0) for k in ("products", "sales", "inventory", "alerts"))
@@ -219,21 +264,27 @@ class ExportService:
         )
 
     async def export_enterprise_workbook(self) -> tuple[bytes, str, str]:
+        from app.services.analytics_snapshot_service import AnalyticsSnapshotService
+
         selection = await self._active_selection()
-        analysis = await self._load_analysis(selection)
-        metrics, traces = await self._dashboard_metrics(selection, analysis)
+        unified = await AnalyticsSnapshotService(self.session).get_current(rebuild_if_missing=True)
+        if not unified:
+            raise ValueError("No analytics snapshot available. Run Your Analysis before exporting.")
+
+        analysis = unified.get("analysis") or {}
+        metrics_dict = unified.get("metrics") or {}
+        traces = unified.get("metric_traces") or {}
+        chart_data = unified.get("charts") or {}
 
         products_df = await self._products_df(selection)
+        inventory_df = await self._inventory_df(selection)
         alerts_df = await self._alerts_df()
         metadata = await self._enterprise_metadata(selection, alerts_df)
-        inventory_df = await self._inventory_df(selection)
-        sales_df = await self._sales_df(selection)
-        metadata["chart_data"] = await self._chart_data(
-            selection, analysis, products_df, inventory_df, sales_df
-        )
+        metadata["chart_data"] = chart_data
+        metadata["analysis_id"] = unified.get("analysis_id")
 
         content = build_enterprise_workbook(
-            metrics=metrics.model_dump(),
+            metrics=metrics_dict,
             metric_traces=traces,
             analysis=analysis,
             products_rows=products_df.to_dict(orient="records"),
@@ -280,17 +331,27 @@ class ExportService:
             fallback_revenue_trend,
         )
 
+        loader = DataframeLoader(self.session)
         revenue_trend: list[dict] = []
         sid = selection.get("sales_import_id")
+        pid = selection.get("products_import_id")
         if sid:
-            daily = await DataframeLoader(self.session).load_sales_daily_revenue(sid, limit_days=90)
+            daily = await loader.load_sales_daily_revenue(sid, limit_days=90)
             revenue_trend = build_revenue_trend(daily)
-        if not revenue_trend:
+        if not revenue_trend and (sales_df is None or len(sales_df) <= self.settings.sales_aggregate_above_rows):
             revenue_trend = fallback_revenue_trend(sales_df)
 
-        category_breakdown = await build_category_breakdown(
-            self.session, selection, products_df, sales_df
-        )
+        category_breakdown: list[dict] = []
+        if sid and pid:
+            cat_df = await loader.load_sales_category_revenue(sid, pid)
+            if not cat_df.empty:
+                from app.utils.chart_data_builder import top_category_breakdown
+
+                category_breakdown = top_category_breakdown(cat_df.to_dict(orient="records"))
+        if not category_breakdown:
+            category_breakdown = await build_category_breakdown(
+                self.session, selection, products_df, sales_df
+            )
         inventory_risk = build_inventory_risk_breakdown(inventory_df, analysis)
 
         return ensure_chart_payload(
@@ -333,6 +394,11 @@ class ExportService:
     async def _load_analysis(self, selection: dict) -> dict:
         if not any(selection.values()):
             return {}
+        from app.services.analytics_snapshot_service import AnalyticsSnapshotService
+
+        unified = await AnalyticsSnapshotService(self.session).get_current(rebuild_if_missing=True)
+        if unified and unified.get("analysis"):
+            return unified["analysis"]
         orchestrator = AnalyticsOrchestrator(self.session)
         pipeline = await orchestrator.run_analysis_pipeline(use_cache=True, selection=selection)
         return pipeline.get("result") or {}

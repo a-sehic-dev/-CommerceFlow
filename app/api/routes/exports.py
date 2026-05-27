@@ -10,6 +10,23 @@ from app.services.export_service import ExportService
 router = APIRouter(prefix="/api/exports", tags=["exports"])
 
 
+@router.get("/latest/download")
+async def download_latest_export(db: AsyncSession = Depends(get_db)):
+    """Deprecated — exports must be generated from Export Center for the current analysis."""
+    resolved = await ExportService(db).resolve_latest_workbook_path()
+    if not resolved:
+        raise HTTPException(
+            404,
+            detail="No export for the current analysis. Run Your Analysis, then generate a workbook in Export Center.",
+        )
+    path, filename = resolved
+    return FileResponse(
+        path,
+        filename=filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
 @router.get("/meta")
 async def export_metadata(db: AsyncSession = Depends(get_db)):
     service = ExportService(db)
@@ -18,10 +35,22 @@ async def export_metadata(db: AsyncSession = Depends(get_db)):
 
 @router.post("/jobs")
 async def create_export_job(body: ExportJobRequest, db: AsyncSession = Depends(get_db)):
+    from app.services.analytics_snapshot_service import AnalyticsSnapshotService
+
     meta = await ExportService(db).get_export_meta()
     if not meta.get("has_selection") and body.report_type != "alerts":
-        raise HTTPException(422, detail="Select datasets in Run Analysis before exporting.")
-    job = await export_jobs.create(body.report_type, body.format)
+        raise HTTPException(422, detail="Select datasets in Run Your Analysis before exporting.")
+    if not meta.get("has_generated_analysis"):
+        raise HTTPException(
+            422,
+            detail="Run Your Analysis before exporting. Exports always reflect the latest analysis run.",
+        )
+    fingerprint = await AnalyticsSnapshotService(db).current_analysis_id()
+    job = await export_jobs.create(
+        body.report_type,
+        body.format,
+        analysis_fingerprint=fingerprint,
+    )
     return {"success": True, "job": job.to_dict()}
 
 

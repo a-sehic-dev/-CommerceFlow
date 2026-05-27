@@ -21,18 +21,15 @@ async def _migrate_active_analysis_config(conn: AsyncConnection) -> None:
         await conn.execute(
             text("ALTER TABLE active_analysis_config ADD COLUMN analysis_generated_at DATETIME")
         )
-
-    # Existing installs with stored snapshots were analyzed before this flag existed.
-    snap = await conn.execute(text("SELECT COUNT(*) FROM analytics_snapshots"))
-    if int(snap.scalar() or 0) > 0:
+    if "analysis_selection_key" not in cols:
+        await conn.execute(
+            text("ALTER TABLE active_analysis_config ADD COLUMN analysis_selection_key VARCHAR(64)")
+        )
         await conn.execute(
             text("""
             UPDATE active_analysis_config
-            SET analysis_generated_at = COALESCE(
-                (SELECT MAX(created_at) FROM analytics_snapshots),
-                datetime('now')
-            )
-            WHERE id = 1 AND analysis_generated_at IS NULL
+            SET analysis_generated_at = NULL
+            WHERE analysis_generated_at IS NOT NULL AND analysis_selection_key IS NULL
             """)
         )
 

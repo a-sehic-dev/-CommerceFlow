@@ -228,12 +228,27 @@ def _paint_chart_panel(ws: Worksheet, top_row: int, bottom_row: int) -> None:
 
 def _embed_chart_png(ws: Worksheet, anchor: str, png_bytes: bytes, *, width: int, height: int) -> None:
     """Embed a rendered chart image — visible in Excel even in Protected View."""
+    import tempfile
     from io import BytesIO
+    from pathlib import Path
 
-    img = XLImage(BytesIO(png_bytes))
-    img.width = width
-    img.height = height
-    ws.add_image(img, anchor)
+    img = None
+    tmp_path: Path | None = None
+    try:
+        img = XLImage(BytesIO(png_bytes))
+    except Exception:
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
+            tmp.write(png_bytes)
+            tmp.flush()
+            tmp_path = Path(tmp.name)
+        img = XLImage(str(tmp_path))
+    try:
+        img.width = width
+        img.height = height
+        ws.add_image(img, anchor)
+    finally:
+        if tmp_path and tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
 
 
 def _write_chart_table(
@@ -262,13 +277,7 @@ def _prepare_revenue_series(trend: list[dict]) -> tuple[list[str], list[float]]:
         for p in trend[:90]
     ]
     if not rows or sum(v for _, v in rows) <= 0:
-        rows = [
-            ("Day 1", 12400.0),
-            ("Day 2", 13850.0),
-            ("Day 3", 14220.0),
-            ("Day 4", 13100.0),
-            ("Day 5", 15680.0),
-        ]
+        return [], []
     labels = [r[0] for r in rows]
     values = [r[1] for r in rows]
     return labels, values
@@ -281,11 +290,7 @@ def _prepare_category_series(categories: list[dict]) -> tuple[list[str], list[fl
         if float(c.get("revenue") or 0) > 0
     ]
     if not rows:
-        rows = [
-            ("Footwear", 420000.0),
-            ("Apparel", 310000.0),
-            ("Equipment", 185000.0),
-        ]
+        return [], []
     labels = [r[0] for r in rows]
     values = [r[1] for r in rows]
     return labels, values
@@ -295,22 +300,56 @@ def _prepare_inventory_series(risk_counts: dict[str, int]) -> tuple[list[str], l
     order = ("Low", "Medium", "Critical")
     values = [float(int(risk_counts.get(label, 0))) for label in order]
     if sum(values) <= 0:
-        values = [280.0, 145.0, 42.0]
+        return [], []
     return list(order), values
 
 
 def validate_executive_charts(ws: Worksheet) -> None:
-    """Fail fast if chart images were not embedded."""
+    """Log when chart images are missing; never block workbook export."""
+    import logging
+
     images = getattr(ws, "_images", None) or []
     if len(images) < 3:
-        raise ValueError(f"Executive Summary needs 3 chart images, found {len(images)}")
+        logging.getLogger("commerceflow.export").info(
+            "Executive Summary chart images: %s of 3 embedded (data tables still included)",
+            len(images),
+        )
+
+
+def _try_embed_chart(
+    ws: Worksheet,
+    anchor: str,
+    png_bytes: bytes,
+    *,
+    width: int,
+    height: int,
+    chart_name: str = "chart",
+) -> bool:
+    if not png_bytes:
+        import logging
+
+        logging.getLogger("commerceflow.export").warning(
+            "Chart not embedded (%s): empty render output", chart_name
+        )
+        return False
+    try:
+        _embed_chart_png(ws, anchor, png_bytes, width=width, height=height)
+        return True
+    except Exception as exc:
+        import logging
+
+        logging.getLogger("commerceflow.export").warning(
+            "Chart not embedded (%s): %s", chart_name, exc
+        )
+        return False
 
 
 def write_executive_charts(ws: Worksheet, start_row: int, chart_data: dict[str, Any]) -> int:
-    """Render three executive chart images from live report data; returns next row."""
+    """Render executive chart images when matplotlib is available; always write data tables."""
     from openpyxl.styles import Alignment, Font, PatternFill
 
     from app.utils.chart_images import (
+        charts_available,
         render_category_doughnut_png,
         render_inventory_bar_png,
         render_revenue_line_png,
@@ -342,8 +381,16 @@ def write_executive_charts(ws: Worksheet, start_row: int, chart_data: dict[str, 
     _write_chart_table(
         ws, data_base_row, 1, 2, ("Date", "Revenue"), list(zip(rev_labels, rev_values, strict=True))
     )
-    _embed_chart_png(
-        ws, f"B{chart_row}", render_revenue_line_png(rev_labels, rev_values), width=490, height=268
+    embedded: list[bool] = []
+    embedded.append(
+        _try_embed_chart(
+            ws,
+            f"B{chart_row}",
+            render_revenue_line_png(rev_labels, rev_values),
+            width=490,
+            height=268,
+            chart_name="Revenue Trend",
+        )
     )
 
     cat_labels, cat_values = _prepare_category_series(categories)
@@ -355,8 +402,15 @@ def write_executive_charts(ws: Worksheet, start_row: int, chart_data: dict[str, 
         ("Category", "Revenue"),
         list(zip(cat_labels, cat_values, strict=True)),
     )
-    _embed_chart_png(
-        ws, f"F{chart_row}", render_category_doughnut_png(cat_labels, cat_values), width=470, height=268
+    embedded.append(
+        _try_embed_chart(
+            ws,
+            f"F{chart_row}",
+            render_category_doughnut_png(cat_labels, cat_values),
+            width=470,
+            height=268,
+            chart_name="Category Revenue Mix",
+        )
     )
 
     inv_labels, inv_values = _prepare_inventory_series(inventory_risk)
@@ -368,9 +422,37 @@ def write_executive_charts(ws: Worksheet, start_row: int, chart_data: dict[str, 
         ("Risk Level", "SKUs"),
         list(zip(inv_labels, inv_values, strict=True)),
     )
-    _embed_chart_png(
-        ws, f"J{chart_row}", render_inventory_bar_png(inv_labels, inv_values), width=450, height=268
+    embedded.append(
+        _try_embed_chart(
+            ws,
+            f"J{chart_row}",
+            render_inventory_bar_png(inv_labels, inv_values),
+            width=450,
+            height=268,
+            chart_name="Inventory Risk Breakdown",
+        )
     )
+
+    if not any(embedded):
+        import logging
+
+        note_row = chart_row + 1
+        ws.merge_cells(start_row=note_row, start_column=2, end_row=note_row, end_column=EXEC_COLS - 1)
+        if not charts_available():
+            note_text = (
+                "Chart images require matplotlib in the server environment. "
+                "Install requirements.txt and restart CommerceFlow. KPI and audit tables are included below."
+            )
+        else:
+            note_text = (
+                "Chart rendering was skipped for this export. KPI and audit tables are included below."
+            )
+        note = ws.cell(row=note_row, column=2, value=note_text)
+        note.font = Font(name="Calibri", size=9, italic=True, color="64748B")
+        note.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        logging.getLogger("commerceflow.export").warning(
+            "Executive Summary: 0/3 chart images embedded"
+        )
 
     validate_executive_charts(ws)
 

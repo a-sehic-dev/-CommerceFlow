@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer
+from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -17,4 +17,5 @@ class ActiveAnalysisConfig(Base):
     sales_import_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     inventory_import_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     analysis_generated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    analysis_selection_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=naive_local_now, onupdate=naive_local_now)

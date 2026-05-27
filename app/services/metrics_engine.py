@@ -416,8 +416,8 @@ class MetricsEngine:
     def _dead_inventory_value(cls, analysis: dict, selection: dict) -> tuple[float | None, dict]:
         if not cls._inventory_selected(selection):
             return None, metric_trace(
-                "SUM(price * qty) for dead stock SKUs",
-                "inventory+products",
+                "SUM(stock_on_hand * unit_cost) for dead_inventory SKUs",
+                "inventory+products+sales",
                 0,
                 None,
                 notes="Inventory dataset not selected",
@@ -425,13 +425,13 @@ class MetricsEngine:
         value = analysis.get("inventory_risk", {}).get("summary", {}).get("dead_inventory_value")
         if value is None:
             return None, metric_trace(
-                "SUM(price * qty) for dead stock SKUs",
+                "SUM(stock_on_hand * unit_cost) for dead_inventory SKUs",
                 "inventory_risk",
                 0,
                 None,
             )
         return float(value), metric_trace(
-            "SUM(product.price * inventory.quantity_on_hand) WHERE days_in_stock >= dead_threshold",
+            "SUM(stock_on_hand * unit_cost) WHERE dead_inventory rules match (180d+ no sale, 0 vel 30d, ≤0.05 vel 90d)",
             "inventory_risk",
             int(analysis.get("inventory_risk", {}).get("summary", {}).get("dead_inventory_count", 0)),
             value,

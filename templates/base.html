@@ -55,16 +55,24 @@
         <p class="brand-tag">{{ brand_tagline }}</p>
       </div>
     </div>
+    <div class="workspace-badge" data-workspace-mode="{{ workspace_mode }}" aria-label="Workspace mode">
+      <span class="workspace-badge-dot" aria-hidden="true"></span>
+      <div>
+        <p id="workspace-badge-title">{{ workspace_title }}</p>
+        <span id="workspace-badge-subtitle">{{ workspace_subtitle }}</span>
+      </div>
+    </div>
 
     <nav class="sidebar-nav">
       {% set nav = [
-        ('overview', '/', 'Executive Overview', 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z'),
+        ('overview', '/dashboard', 'Executive Overview', 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z'),
         ('products', '/products', 'Product Intelligence', 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'),
         ('inventory', '/inventory', 'Inventory Health', 'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'),
         ('profit', '/profit', 'Profit Leakage', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'),
         ('alerts', '/alerts', 'Alerts Center', 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'),
         ('imports', '/imports', 'Import History', 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12'),
-        ('reports', '/reports', 'Export Center', 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z')
+        ('reports', '/reports', 'Export Center', 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'),
+        ('guide', '/guide', 'Workspace Guide', 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5S19.832 5.477 21 6.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253')
       ] %}
       {% for key, href, label, icon_path in nav %}
       <a href="{{ href }}" class="nav-item {% if page == key %}nav-item-active{% endif %}">
@@ -79,11 +87,14 @@
       {% endfor %}
     </nav>
 
-    <div class="sidebar-founder">
-      <p class="sidebar-founder-label">Built by</p>
-      <a href="{{ founder_url }}" target="_blank" rel="noopener noreferrer" class="sidebar-founder-link">{{ founder_name }}</a>
-      <p class="sidebar-founder-ver">v{{ product_version }}</p>
-    </div>
+    <a href="{{ founder_url }}" target="_blank" rel="noopener noreferrer" class="sidebar-founder" aria-label="Open {{ founder_name }} LinkedIn profile">
+      <span class="sidebar-founder-avatar" aria-hidden="true">{{ founder_name[:1] }}</span>
+      <span class="sidebar-founder-copy">
+        <span class="sidebar-founder-label">Built by</span>
+        <span class="sidebar-founder-link">{{ founder_name }}</span>
+        <span class="sidebar-founder-role">Founder &amp; Python Automation Engineer</span>
+      </span>
+    </a>
 
     <div class="sidebar-footer">
       <p class="sidebar-settings-label">Data</p>
@@ -91,12 +102,23 @@
       <button type="button" class="btn-sidebar-warning" onclick="CF.openResetAnalysisModal()">Reset Analysis</button>
       <button type="button" onclick="CF.openAnalysisModal()" class="btn-primary btn-primary-full">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-        Run Analysis
+        Run Your Analysis
       </button>
     </div>
   </aside>
 
   <div class="main-shell">
+    <div id="demo-workspace-banner" class="demo-workspace-banner hidden" role="status">
+      <div class="demo-workspace-banner-inner">
+        <span class="demo-workspace-dot" aria-hidden="true"></span>
+        <div>
+          <p class="demo-workspace-title">{{ workspace_title }}</p>
+          <p class="demo-workspace-sub" id="demo-workspace-label">Sample datasets connected — explore analytics instantly</p>
+        </div>
+        <a href="/" class="demo-workspace-home">← Marketing site</a>
+        <button type="button" class="demo-workspace-dismiss" onclick="CF.dismissDemoBanner()" aria-label="Dismiss">×</button>
+      </div>
+    </div>
     <div id="active-datasets-bar" class="active-datasets-bar hidden"></div>
 
     <header class="topbar">
@@ -126,22 +148,72 @@
       <span class="product-footer-sep">·</span>
       <span>© 2026 <a href="{{ founder_url }}" target="_blank" rel="noopener noreferrer">{{ founder_name }}</a></span>
       <span class="product-footer-sep">·</span>
-      <span class="product-footer-demo">Demo &amp; pilot data only — no client exports without permission</span>
+      <span class="product-footer-demo">Temporary analytics environment — no client exports without permission</span>
     </footer>
   </div>
 
-  <!-- Run Analysis modal -->
-  <div id="analysis-modal" class="analysis-modal" style="display:none" aria-hidden="true">
-    <div class="analysis-modal-backdrop" onclick="CF.closeAnalysisModal()"></div>
-    <div class="analysis-modal-dialog" role="dialog" aria-labelledby="analysis-modal-title">
+  <!-- Post-analysis feedback modal -->
+  <div id="feedback-modal" class="analysis-modal feedback-modal" style="display:none" aria-hidden="true">
+    <div class="analysis-modal-backdrop" onclick="CF.closeFeedbackModal()"></div>
+    <div class="analysis-modal-dialog feedback-dialog" role="dialog" aria-labelledby="feedback-modal-title">
       <div class="analysis-modal-header">
         <div>
-          <h2 id="analysis-modal-title">Run Analysis</h2>
-          <p class="analysis-modal-sub">Select imported datasets from your import history</p>
+          <p class="analysis-modal-eyebrow">Quick feedback</p>
+          <h2 id="feedback-modal-title">How is CommerceFlow for you?</h2>
+          <p class="analysis-modal-sub">Optional — share feedback anytime (demo, landing, or after analysis).</p>
+        </div>
+        <button type="button" class="icon-btn" onclick="CF.closeFeedbackModal()" aria-label="Close">×</button>
+      </div>
+      <div class="analysis-modal-body">
+        <div class="feedback-rating" role="radiogroup" aria-label="Rating">
+          <button type="button" class="feedback-star" data-rating="1" onclick="CF.setFeedbackRating(1)" aria-label="1 star">★</button>
+          <button type="button" class="feedback-star" data-rating="2" onclick="CF.setFeedbackRating(2)" aria-label="2 stars">★</button>
+          <button type="button" class="feedback-star" data-rating="3" onclick="CF.setFeedbackRating(3)" aria-label="3 stars">★</button>
+          <button type="button" class="feedback-star" data-rating="4" onclick="CF.setFeedbackRating(4)" aria-label="4 stars">★</button>
+          <button type="button" class="feedback-star" data-rating="5" onclick="CF.setFeedbackRating(5)" aria-label="5 stars">★</button>
+        </div>
+        <div class="feedback-section">
+          <p class="feedback-label">What was most useful?</p>
+          <div class="feedback-options">
+            <label><input type="checkbox" value="Inventory intelligence"> Inventory intelligence</label>
+            <label><input type="checkbox" value="KPI dashboards"> KPI dashboards</label>
+            <label><input type="checkbox" value="Profit leakage detection"> Profit leakage detection</label>
+            <label><input type="checkbox" value="Reporting exports"> Reporting exports</label>
+            <label><input type="checkbox" value="Alerts & recommendations"> Alerts &amp; recommendations</label>
+          </div>
+        </div>
+        <div id="feedback-testimonial-prompt" class="feedback-testimonial hidden">
+          Would you like to leave a short testimonial?
+        </div>
+        <label class="feedback-field">
+          <span>Optional feedback</span>
+          <textarea id="feedback-text" rows="4" maxlength="2000" placeholder="What worked well? What should be improved?"></textarea>
+        </label>
+        <label class="feedback-field">
+          <span>Email (optional)</span>
+          <input id="feedback-email" type="email" maxlength="320" placeholder="you@company.com">
+        </label>
+        <p id="feedback-message" class="validation-msg hidden"></p>
+      </div>
+      <div class="analysis-modal-footer">
+        <button type="button" class="btn-secondary" onclick="CF.closeFeedbackModal()">Skip</button>
+        <button type="button" class="btn-primary" id="btn-submit-feedback" onclick="CF.submitFeedback()" disabled>Submit feedback</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Run Your Analysis modal -->
+  <div id="analysis-modal" class="analysis-modal" style="display:none" aria-hidden="true">
+    <div class="analysis-modal-backdrop" onclick="CF.closeAnalysisModal()"></div>
+    <div class="analysis-modal-dialog analysis-modal-dialog-run" role="dialog" aria-labelledby="analysis-modal-title">
+      <div class="analysis-modal-header">
+        <div>
+          <h2 id="analysis-modal-title">Run Your Analysis</h2>
+          <p class="analysis-modal-sub">Select one <strong>sales</strong>, <strong>products</strong>, and <strong>inventory</strong> import. Same SKU across files. <a href="/guide" class="analysis-modal-link">Workspace Guide</a> · issues? <a href="mailto:{{ support_email }}?subject=CommerceFlow%20data%20help" class="analysis-modal-link">{{ support_email }}</a></p>
         </div>
         <button type="button" class="icon-btn" onclick="CF.closeAnalysisModal()" aria-label="Close">×</button>
       </div>
-      <div class="analysis-modal-body">
+      <div class="analysis-modal-body analysis-modal-body-scroll">
         <div id="dataset-pickers" class="dataset-pickers">
           <!-- rendered by JS -->
         </div>
@@ -151,12 +223,11 @@
           <label class="checkbox-label"><input type="checkbox" id="opt-rebuild" checked> Rebuild dashboard</label>
           <label class="checkbox-label"><input type="checkbox" id="opt-alerts" checked> Regenerate alerts</label>
           <label class="checkbox-label"><input type="checkbox" id="opt-inventory" checked> Recalculate inventory risks</label>
-          <label class="checkbox-label"><input type="checkbox" id="opt-export"> Export report after analysis</label>
         </div>
       </div>
-      <div class="analysis-modal-footer">
+      <div class="analysis-modal-footer analysis-modal-footer-sticky">
         <button type="button" class="btn-secondary" onclick="CF.closeAnalysisModal()">Cancel</button>
-        <button type="button" class="btn-primary" id="btn-confirm-analysis" onclick="CF.executeAnalysis()" disabled>Run Analysis</button>
+        <button type="button" class="btn-primary" id="btn-confirm-analysis" onclick="CF.executeAnalysis()" disabled>Run Your Analysis</button>
       </div>
     </div>
   </div>
@@ -173,10 +244,10 @@
         <button type="button" class="icon-btn" onclick="CF.closePickerModal()" aria-label="Close">×</button>
       </div>
       <div class="picker-search-wrap">
-        <input type="search" id="picker-search" class="picker-search" placeholder="Search by filename…" oninput="CF.filterPickerList()">
+        <input type="search" id="picker-search" class="picker-search" placeholder="Search datasets…" oninput="CF.filterPickerList()">
       </div>
       <div id="picker-list" class="picker-list"></div>
-      <p id="picker-empty" class="picker-empty hidden">No imports found for this dataset type. Upload a file on Import History first.</p>
+      <div id="picker-empty" class="picker-empty hidden">No imports found for this dataset type. Upload a file on Import History first.</div>
     </div>
   </div>
 
@@ -197,7 +268,7 @@
           <li>Active dataset selections</li>
           <li>Generated exports tied to imports</li>
         </ul>
-        <p class="reset-modal-note">Demo source files in <code>data/demo_companies/</code> are not deleted.</p>
+        <p class="reset-modal-note">Bundled sample source files are not deleted.</p>
         <div id="clear-datasets-progress" class="reset-modal-progress hidden">
           <div class="export-progress-track"><div class="export-progress-fill reset-progress-indeterminate"></div></div>
           <p class="reset-progress-label" id="clear-datasets-progress-label">Clearing datasets…</p>
@@ -235,6 +306,11 @@
   </div>
 
   <div id="toast-container" class="toast-container"></div>
+
+  <button type="button" id="feedback-fab" class="feedback-fab" onclick="CF.openFeedbackModal()" aria-label="Share feedback" title="Share feedback">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h6m-6 4h3M5 6a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H9l-4 3v-3H5a2 2 0 01-2-2V6z"/></svg>
+    <span>Feedback</span>
+  </button>
 
   <script src="/static/js/app.js"></script>
   {% block scripts %}{% endblock %}
