@@ -7,6 +7,7 @@ from app.models.inventory import InventoryRecord
 from app.models.organization import Organization
 from app.models.product import Product
 from app.models.sales import SalesRecord
+from app.models.usage_event import UsageEvent
 from app.models.user import User
 
 __all__ = [
@@ -18,6 +19,7 @@ __all__ = [
     "Alert",
     "AnalyticsSnapshot",
     "FeedbackEntry",
+    "UsageEvent",
     "User",
     "Organization",
 ]
