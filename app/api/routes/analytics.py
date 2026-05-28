@@ -133,6 +133,7 @@ async def run_analysis(body: AnalysisRunRequest, db: AsyncSession = Depends(get_
         return JSONResponse(status_code=status, content=sanitize_for_json(pipeline))
     except Exception as exc:
         logger.exception("Analysis pipeline crashed")
+        await db.rollback()
         return _error_response(exc)
 
 

@@ -7,8 +7,22 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 async def migrate_schema(conn: AsyncConnection) -> None:
     await _migrate_import_records(conn)
     await _migrate_active_analysis_config(conn)
+    await _ensure_active_analysis_singleton(conn)
     if await _needs_backfill(conn):
         await _backfill_import_dataset_types(conn)
+
+
+async def _ensure_active_analysis_singleton(conn: AsyncConnection) -> None:
+    """Guarantee row id=1 exists (fixes UNIQUE errors on concurrent first requests)."""
+    from app.utils.app_timezone import naive_local_now
+
+    await conn.execute(
+        text(
+            "INSERT OR IGNORE INTO active_analysis_config (id, updated_at) "
+            "VALUES (1, :updated_at)"
+        ),
+        {"updated_at": naive_local_now()},
+    )
 
 
 async def _migrate_active_analysis_config(conn: AsyncConnection) -> None:

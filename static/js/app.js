@@ -53,7 +53,8 @@ const CF = {
     CF.refreshPlatformUI();
     CF.syncImportsOnLoad();
     CF.initFeedbackExperience();
-    CF.maybeShowDemoLaunchHint();
+    CF.trackUsage('page_view');
+    CF.maybeAutoLaunchDemo();
     if (location.pathname === '/reports') {
       CF.hydrateExportState();
     }
@@ -138,6 +139,24 @@ const CF = {
     existing = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
     localStorage.setItem(key, existing);
     return existing;
+  },
+
+  trackUsage(eventType, meta = {}) {
+    try {
+      fetch('/api/usage/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_type: eventType,
+          path: location.pathname,
+          session_id: CF.sessionId(),
+          meta,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      /* never block UI */
+    }
   },
 
   showAnalysisError(err) {
@@ -682,6 +701,7 @@ const CF = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      CF.trackUsage('feedback_submit', { rating: CF.feedbackRating });
       CF.toast(res.message || 'Feedback captured. Thank you.', 'success', 5000);
       sessionStorage.setItem('cf_feedback_submitted', '1');
       CF.closeFeedbackModal(false);
@@ -768,6 +788,7 @@ const CF = {
     }
 
     CF.closeAnalysisModal();
+    CF.trackUsage('run_analysis_start');
     const body = {
       ...resolved,
       rebuild_dashboard: document.getElementById('opt-rebuild')?.checked ?? true,
@@ -798,11 +819,13 @@ const CF = {
       clearInterval(stageTimer);
       CF.showAnalysisStages(pipeline.stages);
       if (!pipeline.success) {
+        CF.trackUsage('run_analysis_fail', { message: pipeline.message || 'failed' });
         const err = new Error(pipeline.message || 'Analysis failed');
         err.payload = pipeline;
         CF.showAnalysisError(err);
         return;
       }
+      CF.trackUsage('run_analysis_success');
       CF.toast(pipeline.message || 'Analysis complete', 'success');
       if (pipeline.post_actions?.length) {
         pipeline.post_actions.forEach((a) => CF.toast(a, 'info', 5000));
@@ -822,6 +845,7 @@ const CF = {
       else if (path === '/profit') CF.loadProfit();
     } catch (e) {
       clearInterval(stageTimer);
+      CF.trackUsage('run_analysis_fail', { message: CF.parseApiError(e).split('\n')[0] });
       CF.showAnalysisError(e);
     } finally {
       if (btn) btn.disabled = false;
@@ -1996,12 +2020,27 @@ const CF = {
     CF.closeResetAnalysisModal();
   },
 
-  maybeShowDemoLaunchHint() {
-    const pending = (sessionStorage.getItem('cf_demo_launch_pending') || '').trim();
-    if (!pending) return;
+  async maybeAutoLaunchDemo() {
+    if (location.pathname !== '/dashboard') return;
+    const params = new URLSearchParams(location.search);
+    const fromQuery = (params.get('demo') || '').trim();
+    const fromStorage = (sessionStorage.getItem('cf_demo_launch_pending') || '').trim();
+    const company = fromQuery || fromStorage;
+    if (!company) return;
+
     sessionStorage.removeItem('cf_demo_launch_pending');
-    CF.showDemoWorkspaceBanner(pending);
-    CF.toast('Click Load Sample Workspace to import the Atlas demo datasets.', 'info', 9000);
+    if (fromQuery) {
+      const url = new URL(location.href);
+      url.searchParams.delete('demo');
+      history.replaceState(null, '', url.pathname + url.search);
+    }
+
+    const cacheKey = `cf_demo_loaded_${company}`;
+    if (sessionStorage.getItem(cacheKey) === '1') return;
+
+    const loader = company === 'atlas' || company === 'sandbox' ? 'sandbox' : company;
+    await CF.loadDemoCompany(loader);
+    sessionStorage.setItem(cacheKey, '1');
   },
 
   showDemoWorkspaceBanner(company) {
@@ -2035,6 +2074,7 @@ const CF = {
       CF.resetExportClientState();
       await CF.loadActiveDatasetsBar();
       await CF.refreshPlatformUI();
+      CF.trackUsage('load_demo', { company });
       CF.toast(r.message || 'CommerceFlow workspace ready', 'success', 6000);
       CF.showDemoWorkspaceBanner(company);
       if (location.pathname !== '/dashboard') location.href = '/dashboard';
@@ -2366,7 +2406,10 @@ const CF = {
             CF.persistExportState();
             if (!opts.silent && !downloadStarted) {
               downloadStarted = true;
-              CF.downloadExportOnce(job);
+              CF.downloadExportOnce(
+              job,
+              reportType === 'enterprise' ? 'export_enterprise' : 'export_report',
+            );
             }
             setTimeout(() => CF.showExportProgress(false), 1200);
             if (location.pathname === '/reports') CF.loadReports();
@@ -2402,11 +2445,14 @@ const CF = {
     });
   },
 
-  downloadExportOnce(job) {
+  downloadExportOnce(job, eventType = 'export_enterprise') {
     if (!job?.download_url) return false;
     const key = String(job.id || job.download_url);
     if (CF.exportDownloadedJobs.has(key)) return false;
     CF.exportDownloadedJobs.add(key);
+    CF.trackUsage(eventType === 'export_report' ? 'export_report' : 'export_enterprise', {
+      filename: job.filename || '',
+    });
     const a = document.createElement('a');
     a.href = job.download_url;
     a.download = job.filename || 'export.bin';
@@ -2458,6 +2504,7 @@ const CF = {
       a.download = match ? match[1] : `commerceflow_${type}.${format}`;
       a.click();
       CF.setExportStatus('ready', 'Ready');
+      CF.trackUsage('export_report', { type, format });
       CF.toast(`Exported ${type} report`, 'success');
     } catch (e) {
       CF.setExportStatus('failed', 'Failed');

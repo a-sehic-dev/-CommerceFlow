@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.active_analysis import ActiveAnalysisConfig
+from app.utils.active_config import get_active_analysis_config
 from app.utils.analysis_selection import selection_fingerprint
 from app.utils.app_timezone import naive_local_now
 
@@ -13,15 +14,7 @@ class AnalysisStateService:
         self.session = session
 
     async def _config(self) -> ActiveAnalysisConfig:
-        result = await self.session.execute(
-            select(ActiveAnalysisConfig).where(ActiveAnalysisConfig.id == 1)
-        )
-        config = result.scalar_one_or_none()
-        if not config:
-            config = ActiveAnalysisConfig(id=1)
-            self.session.add(config)
-            await self.session.flush()
-        return config
+        return await get_active_analysis_config(self.session)
 
     def selection_key_for(self, config: ActiveAnalysisConfig) -> str | None:
         if not any(

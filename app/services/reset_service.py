@@ -17,6 +17,7 @@ from app.models.inventory import InventoryRecord
 from app.models.product import Product
 from app.models.sales import SalesRecord
 from app.services.analysis_state import AnalysisStateService
+from app.utils.active_config import get_active_analysis_config
 from app.utils.cache import analytics_cache
 
 logger = logging.getLogger("commerceflow.reset")
@@ -155,16 +156,10 @@ class ResetService:
         }
 
     async def _reset_active_selection(self) -> None:
-        result = await self.session.execute(
-            select(ActiveAnalysisConfig).where(ActiveAnalysisConfig.id == 1)
-        )
-        config = result.scalar_one_or_none()
-        if not config:
-            self.session.add(ActiveAnalysisConfig(id=1))
-        else:
-            config.products_import_id = None
-            config.sales_import_id = None
-            config.inventory_import_id = None
+        config = await get_active_analysis_config(self.session)
+        config.products_import_id = None
+        config.sales_import_id = None
+        config.inventory_import_id = None
 
     def _clear_upload_dir(self) -> int:
         removed = 0

@@ -338,6 +338,7 @@ class AnalyticsOrchestrator:
                 await snap_svc.persist_unified(selection, unified)
                 await AnalysisStateService(self.session).mark_generated()
             except Exception as exc:
+                await self.session.rollback()
                 self._record_error("unified_snapshot", exc)
                 success = False
                 self._record_stage(

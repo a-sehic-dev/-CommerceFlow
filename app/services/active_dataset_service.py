@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.active_analysis import ActiveAnalysisConfig
 from app.schemas.datasets import ActiveDatasetsResponse, ImportCatalogItem
+from app.utils.active_config import get_active_analysis_config
 from app.services.dataset_catalog_service import DatasetCatalogService
 
 
@@ -11,15 +12,7 @@ class ActiveDatasetService:
         self.session = session
 
     async def _get_config(self) -> ActiveAnalysisConfig:
-        result = await self.session.execute(
-            select(ActiveAnalysisConfig).where(ActiveAnalysisConfig.id == 1)
-        )
-        config = result.scalar_one_or_none()
-        if not config:
-            config = ActiveAnalysisConfig(id=1)
-            self.session.add(config)
-            await self.session.flush()
-        return config
+        return await get_active_analysis_config(self.session)
 
     async def get_active(self) -> ActiveDatasetsResponse:
         config = await self._get_config()
