@@ -103,7 +103,10 @@ class ResetService:
         alert_count = await self._scalar_count(Alert)
         active = await self._active_has_selection()
         has_analysis = await AnalysisStateService(self.session).has_generated_analysis()
+        from app.services.demo_bootstrap import atlas_workspace_ready, get_bootstrap_state
         from app.services.demo_loader_service import get_demo_companies
+
+        demo_ready = await atlas_workspace_ready(self.session)
 
         return {
             "has_imports": import_count > 0,
@@ -114,6 +117,8 @@ class ResetService:
             "alert_count": alert_count,
             "demo_files_ready": self._demo_files_ready(),
             "demo_companies": list(get_demo_companies().keys()),
+            "demo_ready": demo_ready,
+            "demo_bootstrap": get_bootstrap_state(),
         }
 
     async def _delete_imported_data(self) -> dict:

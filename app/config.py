@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     founder_url: str = "https://www.linkedin.com/in/sedin-sehic-1134253a8/"
     product_version: str = "1.0.0"
     workspace_mode: str = "demo_workspace"
+    auto_bootstrap_demo: bool = True
     app_env: str = "development"
     debug: bool = True
     secret_key: str = "dev-secret-change-in-production"
@@ -52,6 +53,7 @@ class Settings(BaseSettings):
     assistant_ip_limit: int = 30
     assistant_cooldown_seconds: float = 2.5
     assistant_alert_email: str = "commerceflow.platform@gmail.com"
+    usage_stats_key: str | None = None
     smtp_host: str | None = None
     smtp_port: int = 587
     smtp_username: str | None = None

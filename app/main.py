@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import traceback
 from contextlib import asynccontextmanager
@@ -8,7 +9,7 @@ from fastapi.encoders import ENCODERS_BY_TYPE
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import admin, alerts, analytics, assistant, exports, feedback, imports, pages
+from app.api.routes import admin, alerts, analytics, assistant, exports, feedback, imports, pages, usage
 from app.config import ensure_directories, get_settings
 from app.database import init_db
 from app.utils.app_timezone import as_local_iso
@@ -36,7 +37,18 @@ async def lifespan(app: FastAPI):
             "Executive workbook charts: matplotlib/Pillow not available — "
             "run .venv\\Scripts\\pip install -r requirements.txt and restart with .venv\\Scripts\\python.exe run.py"
         )
+
+    from app.services.demo_bootstrap import run_startup_demo_bootstrap, should_auto_bootstrap
+
+    bootstrap_task: asyncio.Task | None = None
+    if should_auto_bootstrap():
+        log.info("Scheduling Atlas demo bootstrap (background)")
+        bootstrap_task = asyncio.create_task(run_startup_demo_bootstrap())
+
     yield
+
+    if bootstrap_task and not bootstrap_task.done():
+        bootstrap_task.cancel()
 
 
 def create_app() -> FastAPI:
@@ -58,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(alerts.router)
     app.include_router(exports.router)
     app.include_router(feedback.router)
+    app.include_router(usage.router)
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception):

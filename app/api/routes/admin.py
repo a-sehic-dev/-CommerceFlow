@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.services.demo_bootstrap import bootstrap_atlas_if_needed, get_bootstrap_state
 from app.services.demo_loader_service import DemoLoaderService, get_demo_companies
 from app.services.reset_service import ResetService
 
@@ -51,6 +52,19 @@ async def rebuild_analytics_engine(db: AsyncSession = Depends(get_db)):
     result = await ResetService(db).reset_analysis()
     await db.commit()
     return result
+
+
+@router.post("/demo/bootstrap")
+async def bootstrap_demo(db: AsyncSession = Depends(get_db)):
+    """Idempotent: ensure Atlas guest workspace is imported and selected."""
+    try:
+        result = await bootstrap_atlas_if_needed(db)
+        await db.commit()
+        result["bootstrap"] = get_bootstrap_state()
+        return result
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(500, str(exc)) from exc
 
 
 @router.post("/demo/load/{company}")

@@ -36,7 +36,9 @@ Ako build padne: **Manual Deploy → Clear build cache & deploy**.
 Otvori svoj URL → **Load live demo** (gumb na dashboardu) ili:
 
 ```bash
-curl -X POST https://TVOJ-URL.onrender.com/api/admin/demo/load/atlas
+Atlas demo se **automatski učitava** pri startu servera (`AUTO_BOOTSTRAP_DEMO=true`, default).
+
+Ručno (ako treba): `curl -X POST https://TVOJ-URL.onrender.com/api/admin/demo/bootstrap`
 ```
 
 Zatim **Run Analysis** u UI-u.

@@ -24,6 +24,11 @@ DEMO_DIR = ROOT / "data" / "demo_companies"
 DEMO_DATASET_TYPES = ("products", "inventory", "sales")
 # Guest / portfolio demo: Atlas Retail Group enterprise workspace only.
 DEMO_WORKSPACE_KEYS = frozenset({"atlas"})
+ATLAS_DEMO_FILES = {
+    "products": "atlas_products.xlsx",
+    "inventory": "atlas_inventory.xlsx",
+    "sales": "atlas_sales_q1_2026.xlsx",
+}
 
 
 def _dataset_type_from_name(path: Path) -> str | None:
@@ -125,7 +130,10 @@ class DemoLoaderService:
         import_ids: dict[str, dict[str, int]] = {}
         for key, files in discover_demo_companies().items():
             workspace_ids: dict[str, int] = {}
-            for dtype, filename in files.items():
+            for dtype in DEMO_DATASET_TYPES:
+                filename = files.get(dtype)
+                if not filename:
+                    continue
                 record = await self._ensure_import(filename)
                 if record:
                     workspace_ids[dtype] = record.id
@@ -180,7 +188,7 @@ class DemoLoaderService:
 
         return {
             "success": True,
-            "message": "Sample workspace is ready. All evaluation datasets are available in Import History.",
+            "message": "Atlas demo is loaded — click Run Your Analysis to view KPIs and charts.",
             "company": key,
             "import_ids": import_ids,
             "available_workspaces": sorted(all_imports.keys()),

@@ -54,10 +54,13 @@ const CF = {
     CF.syncImportsOnLoad();
     CF.initFeedbackExperience();
     CF.trackUsage('page_view');
-    CF.maybeAutoLaunchDemo();
+    CF.ensureGuestDemoReady().then(() => CF.afterDemoReadyPageLoad());
     if (location.pathname === '/reports') {
       CF.hydrateExportState();
     }
+  },
+
+  afterDemoReadyPageLoad() {
     const path = location.pathname;
     const loaders = {
       '/dashboard': 'loadDashboard',
@@ -2020,27 +2023,44 @@ const CF = {
     CF.closeResetAnalysisModal();
   },
 
-  async maybeAutoLaunchDemo() {
-    if (location.pathname !== '/dashboard') return;
-    const params = new URLSearchParams(location.search);
-    const fromQuery = (params.get('demo') || '').trim();
-    const fromStorage = (sessionStorage.getItem('cf_demo_launch_pending') || '').trim();
-    const company = fromQuery || fromStorage;
-    if (!company) return;
+  async ensureGuestDemoReady() {
+    await CF.refreshPlatformUI();
+    const status = CF.platformStatus;
+    if (!status?.demo_files_ready) return;
 
-    sessionStorage.removeItem('cf_demo_launch_pending');
-    if (fromQuery) {
-      const url = new URL(location.href);
-      url.searchParams.delete('demo');
-      history.replaceState(null, '', url.pathname + url.search);
+    if (status.demo_ready) {
+      await CF.loadActiveDatasetsBar();
+      CF.showDemoWorkspaceBanner('atlas');
+      return;
     }
 
-    const cacheKey = `cf_demo_loaded_${company}`;
-    if (sessionStorage.getItem(cacheKey) === '1') return;
+    const boot = status.demo_bootstrap || {};
+    if (boot.status === 'running') {
+      CF.toast('Loading Atlas demo workspace (products, inventory, sales)…', 'info', 120000);
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await CF.refreshPlatformUI();
+        if (CF.platformStatus?.demo_ready) break;
+        if (CF.platformStatus?.demo_bootstrap?.status === 'failed') break;
+      }
+      await CF.loadActiveDatasetsBar();
+      if (CF.platformStatus?.demo_ready) {
+        CF.showDemoWorkspaceBanner('atlas');
+        CF.toast('Atlas demo is ready. Click Run Your Analysis.', 'success', 8000);
+      }
+      return;
+    }
 
-    const loader = company === 'atlas' || company === 'sandbox' ? 'sandbox' : company;
-    await CF.loadDemoCompany(loader);
-    sessionStorage.setItem(cacheKey, '1');
+    CF.toast('Preparing Atlas demo workspace…', 'info', 120000);
+    try {
+      const r = await CF.fetchJSON('/api/admin/demo/bootstrap', { method: 'POST' });
+      await CF.loadActiveDatasetsBar();
+      await CF.refreshPlatformUI();
+      CF.showDemoWorkspaceBanner('atlas');
+      CF.toast(r.message || 'Atlas demo is ready. Click Run Your Analysis.', 'success', 8000);
+    } catch (e) {
+      await CF.loadDemoCompany('sandbox');
+    }
   },
 
   showDemoWorkspaceBanner(company) {

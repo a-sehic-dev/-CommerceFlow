@@ -1,6 +1,5 @@
 """Tracks whether the user has run analysis on the current dataset selection."""
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.active_analysis import ActiveAnalysisConfig
