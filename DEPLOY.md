@@ -12,7 +12,7 @@ Lokalno (`127.0.0.1`) **samo ti vidiš**. Za LinkedIn treba **javni HTTPS URL**.
 
 **Build Command:**
 ```
-pip install --upgrade pip setuptools wheel && pip install --prefer-binary pydantic-core pydantic pydantic-settings && pip install --prefer-binary -r requirements.txt && cd landing && npm ci && npm run build
+pip install --upgrade pip setuptools wheel && pip install --prefer-binary -r requirements.txt && cd landing && npm ci && npm run build
 ```
 
 **Start Command:**
