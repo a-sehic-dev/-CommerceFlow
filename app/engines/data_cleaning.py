@@ -1,5 +1,5 @@
 import pandas as pd
-from rapidfuzz import fuzz
+from difflib import SequenceMatcher
 
 from app.config import get_settings
 from app.utils.dataframe_ops import top_n_issues
@@ -76,7 +76,7 @@ class DataCleaningEngine:
             if not t1:
                 continue
             for t2 in titles[i + 1 :]:
-                if fuzz.ratio(t1, t2) >= self.FUZZY_THRESHOLD:
+                if self._title_similarity(t1, t2) >= self.FUZZY_THRESHOLD:
                     pair = tuple(sorted([t1, t2]))
                     if pair in seen:
                         continue
