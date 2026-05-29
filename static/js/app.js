@@ -29,6 +29,10 @@ const CF = {
     latestWorkbook: null,
   },
 
+  isFounderAdminPage() {
+    return location.pathname.startsWith('/admin');
+  },
+
   init() {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
@@ -53,8 +57,10 @@ const CF = {
     CF.refreshPlatformUI();
     CF.syncImportsOnLoad();
     CF.initFeedbackExperience();
-    CF.trackUsage('page_view');
-    CF.ensureGuestDemoReady().then(() => CF.afterDemoReadyPageLoad());
+    if (!CF.isFounderAdminPage()) {
+      CF.trackUsage('page_view');
+      CF.ensureGuestDemoReady().then(() => CF.afterDemoReadyPageLoad());
+    }
     if (location.pathname === '/reports') {
       CF.hydrateExportState();
     }
@@ -145,6 +151,7 @@ const CF = {
   },
 
   trackUsage(eventType, meta = {}) {
+    if (CF.isFounderAdminPage()) return;
     try {
       fetch('/api/usage/track', {
         method: 'POST',

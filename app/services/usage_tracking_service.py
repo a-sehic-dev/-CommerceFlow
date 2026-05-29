@@ -8,8 +8,13 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import not_
+
 from app.models.usage_event import UsageEvent
 from app.utils.app_timezone import naive_local_now
+
+# Founder /admin/* visits are excluded from guest analytics.
+_EXCLUDED_PATH_PREFIX = "/admin"
 
 
 class UsageTrackingService:
@@ -29,6 +34,14 @@ class UsageTrackingService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    @staticmethod
+    def _is_public_path(path: str | None) -> bool:
+        return not (path or "").startswith(_EXCLUDED_PATH_PREFIX)
+
+    @classmethod
+    def _public_event_filter(cls):
+        return not_(UsageEvent.path.like(f"{_EXCLUDED_PATH_PREFIX}%"))
+
     async def record(
         self,
         *,
@@ -41,6 +54,8 @@ class UsageTrackingService:
         if event_type not in self.ALLOWED_EVENTS:
             return
         path = (path or "")[:256] or None
+        if not self._is_public_path(path):
+            return
         session_id = (session_id or "")[:120] or None
         meta_json = None
         if meta:
@@ -61,30 +76,34 @@ class UsageTrackingService:
 
     async def summary(self, *, days: int = 30) -> dict:
         since = naive_local_now() - timedelta(days=max(1, min(days, 90)))
+        public = self._public_event_filter()
+        time_filter = UsageEvent.created_at >= since
         total = await self.session.scalar(
-            select(func.count()).select_from(UsageEvent).where(UsageEvent.created_at >= since)
+            select(func.count())
+            .select_from(UsageEvent)
+            .where(time_filter, public)
         )
         sessions = await self.session.scalar(
             select(func.count(func.distinct(UsageEvent.session_id)))
             .select_from(UsageEvent)
-            .where(UsageEvent.created_at >= since, UsageEvent.session_id.isnot(None))
+            .where(time_filter, public, UsageEvent.session_id.isnot(None))
         )
         by_event_rows = await self.session.execute(
             select(UsageEvent.event_type, func.count())
-            .where(UsageEvent.created_at >= since)
+            .where(time_filter, public)
             .group_by(UsageEvent.event_type)
             .order_by(func.count().desc())
         )
         by_path_rows = await self.session.execute(
             select(UsageEvent.path, func.count())
-            .where(UsageEvent.created_at >= since, UsageEvent.path.isnot(None))
+            .where(time_filter, public, UsageEvent.path.isnot(None))
             .group_by(UsageEvent.path)
             .order_by(func.count().desc())
             .limit(12)
         )
         recent_rows = await self.session.execute(
             select(UsageEvent)
-            .where(UsageEvent.created_at >= since)
+            .where(time_filter, public)
             .order_by(UsageEvent.created_at.desc())
             .limit(40)
         )
@@ -120,6 +139,10 @@ class UsageTrackingService:
         value = await self.session.scalar(
             select(func.count())
             .select_from(UsageEvent)
-            .where(UsageEvent.created_at >= since, UsageEvent.event_type == event_type)
+            .where(
+                UsageEvent.created_at >= since,
+                UsageEvent.event_type == event_type,
+                self._public_event_filter(),
+            )
         )
         return int(value or 0)
