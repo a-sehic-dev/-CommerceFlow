@@ -93,6 +93,7 @@ class UsageTrackingService:
             "load_demo": await self._count_event("load_demo", since),
             "run_analysis_success": await self._count_event("run_analysis_success", since),
             "export_enterprise": await self._count_event("export_enterprise", since),
+            "export_report": await self._count_event("export_report", since),
             "feedback_submit": await self._count_event("feedback_submit", since),
         }
         return {

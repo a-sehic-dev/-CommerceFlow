@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Founder Admin{% endblock %}
+{% block page_title %}Founder Admin{% endblock %}
+{% block page_subtitle %}Visitor activity + feedback inbox (private — same key as USAGE_STATS_KEY){% endblock %}
+
+{% block content %}
+<section class="insights-panel" id="insights-panel">
+  <p class="insights-loading" id="insights-loading">Loading…</p>
+  <div id="insights-content" class="hidden">
+    <h2 class="insights-section-title">Visitor activity (30 days)</h2>
+    <div class="insights-funnel" id="insights-funnel"></div>
+    <div class="insights-grid">
+      <div class="insights-card">
+        <h3>Events by type</h3>
+        <ul id="insights-by-event"></ul>
+      </div>
+      <div class="insights-card">
+        <h3>Top paths</h3>
+        <ul id="insights-by-path"></ul>
+      </div>
+    </div>
+    <div class="insights-card insights-recent-wrap">
+      <h3>Recent activity (who did what)</h3>
+      <div class="insights-recent" id="insights-recent"></div>
+    </div>
+
+    <h2 class="insights-section-title insights-section-spaced">Feedback inbox</h2>
+    <p class="insights-hint">Stored on server SQLite. Email copy only if SMTP_* is set on Render.</p>
+    <div class="insights-card" id="insights-feedback-wrap">
+      <div id="insights-feedback-list"></div>
+    </div>
+  </div>
+  <p class="insights-error hidden" id="insights-error"></p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const key = new URLSearchParams(location.search).get('key') || '{{ insights_key|e }}';
+  const loading = document.getElementById('insights-loading');
+  const content = document.getElementById('insights-content');
+  const errEl = document.getElementById('insights-error');
+
+  if (!key) {
+    loading.classList.add('hidden');
+    errEl.classList.remove('hidden');
+    errEl.textContent = 'Add ?key=YOUR_USAGE_STATS_KEY to the URL (same as Render env USAGE_STATS_KEY).';
+    return;
+  }
+
+  const headers = { Accept: 'application/json' };
+
+  Promise.all([
+    fetch(`/api/usage/summary?key=${encodeURIComponent(key)}&days=30`, { headers })
+      .then((r) => r.json().then((data) => ({ ok: r.ok, data }))),
+    fetch(`/api/admin/feedback?key=${encodeURIComponent(key)}&limit=100`, { headers })
+      .then((r) => r.json().then((data) => ({ ok: r.ok, data }))),
+  ])
+    .then(([usage, feedback]) => {
+      loading.classList.add('hidden');
+      if (!usage.ok) {
+        errEl.classList.remove('hidden');
+        errEl.textContent = usage.data.detail || 'Could not load activity.';
+        return;
+      }
+      content.classList.remove('hidden');
+      const data = usage.data;
+      const f = data.funnel || {};
+      document.getElementById('insights-funnel').innerHTML = `
+        <div class="insights-stat"><span class="insights-stat-label">Total events</span><strong>${data.total_events || 0}</strong></div>
+        <div class="insights-stat"><span class="insights-stat-label">Unique sessions</span><strong>${data.unique_sessions || 0}</strong></div>
+        <div class="insights-stat"><span class="insights-stat-label">Landing views</span><strong>${f.landing_view || 0}</strong></div>
+        <div class="insights-stat"><span class="insights-stat-label">Page views (app)</span><strong>${(data.by_event || []).find((r) => r.event === 'page_view')?.count || 0}</strong></div>
+        <div class="insights-stat"><span class="insights-stat-label">Run analysis OK</span><strong>${f.run_analysis_success || 0}</strong></div>
+        <div class="insights-stat"><span class="insights-stat-label">Exports</span><strong>${(f.export_enterprise || 0) + (f.export_report || 0)}</strong></div>
+        <div class="insights-stat"><span class="insights-stat-label">Feedback sent</span><strong>${f.feedback_submit || 0}</strong></div>`;
+      document.getElementById('insights-by-event').innerHTML = (data.by_event || [])
+        .map((row) => `<li><span>${row.event}</span><strong>${row.count}</strong></li>`).join('') || '<li>No events yet</li>';
+      document.getElementById('insights-by-path').innerHTML = (data.by_path || [])
+        .map((row) => `<li><span>${row.path}</span><strong>${row.count}</strong></li>`).join('') || '<li>No paths yet</li>';
+      document.getElementById('insights-recent').innerHTML = (data.recent || [])
+        .map((row) => {
+          const label = {
+            page_view: 'Opened page',
+            landing_view: 'Landing',
+            load_demo: 'Demo load',
+            run_analysis_start: 'Run analysis (start)',
+            run_analysis_success: 'Run analysis (OK)',
+            run_analysis_fail: 'Run analysis (fail)',
+            export_enterprise: 'Export workbook',
+            export_report: 'Export report',
+            feedback_submit: 'Feedback',
+            assistant_chat: 'AI chat',
+          }[row.event_type] || row.event_type;
+          return `<div class="insights-recent-row"><span class="insights-recent-time">${row.created_at || ''}</span><span class="insights-recent-event">${label}</span><span class="insights-recent-path">${row.path || ''}</span><code class="insights-recent-session">${(row.session_id || '').slice(0, 8)}</code></div>`;
+        })
+        .join('') || '<p class="text-slate-500">No activity yet.</p>';
+
+      const fbEl = document.getElementById('insights-feedback-list');
+      if (!feedback.ok) {
+        fbEl.innerHTML = '<p class="insights-hint">Could not load feedback list.</p>';
+        return;
+      }
+      const entries = feedback.data.entries || [];
+      if (!entries.length) {
+        fbEl.innerHTML = '<p class="insights-hint">No feedback in database yet. (Render redeploy clears SQLite unless you add persistent disk.)</p>';
+        return;
+      }
+      fbEl.innerHTML = entries.map((e) => `
+        <article class="insights-feedback-item">
+          <header>
+            <strong>${'★'.repeat(e.rating)}${'☆'.repeat(5 - e.rating)}</strong>
+            <time>${e.created_at || ''}</time>
+          </header>
+          ${e.email_optional ? `<p class="insights-feedback-email">${e.email_optional}</p>` : ''}
+          ${e.most_useful ? `<p class="insights-feedback-tags">${e.most_useful}</p>` : ''}
+          ${e.feedback_text ? `<p class="insights-feedback-text">${e.feedback_text.replace(/</g, '&lt;')}</p>` : '<p class="insights-hint">(no comment)</p>'}
+          <code class="insights-recent-session">session ${(e.session_id || '').slice(0, 12)}</code>
+        </article>`).join('');
+    })
+    .catch(() => {
+      loading.classList.add('hidden');
+      errEl.classList.remove('hidden');
+      errEl.textContent = 'Network error loading admin data.';
+    });
+})();
+</script>
+{% endblock %}

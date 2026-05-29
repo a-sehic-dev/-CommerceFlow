@@ -1,9 +1,15 @@
+import logging
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.models.feedback import FeedbackEntry
+from app.utils.founder_email import send_founder_email
+
+logger = logging.getLogger("commerceflow.feedback")
 
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 
@@ -59,6 +65,29 @@ async def create_feedback(body: FeedbackCreate, db: AsyncSession = Depends(get_d
     )
     db.add(entry)
     await db.flush()
+
+    settings = get_settings()
+    if body.email_optional or body.feedback_text:
+        lines = [
+            f"Rating: {body.rating}/5",
+            f"Email: {body.email_optional or '(not provided)'}",
+            f"Session: {body.session_id[:12]}…",
+        ]
+        if body.most_useful:
+            lines.append(f"Most useful: {', '.join(body.most_useful)}")
+        if body.feedback_text:
+            lines.append("")
+            lines.append(body.feedback_text)
+        sent = send_founder_email(
+            subject=f"[CommerceFlow] New feedback ({body.rating}/5)",
+            body="\n".join(lines),
+        )
+        if not sent:
+            logger.info(
+                "Feedback #%s saved (no SMTP — view at /admin/insights?key=...)",
+                entry.id,
+            )
+
     return {
         "success": True,
         "id": entry.id,

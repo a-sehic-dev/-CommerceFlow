@@ -45,6 +45,21 @@ Zatim **Run Analysis** u UI-u.
 
 > Free tier: disk se ponekad resetira — za demo ponovo klikni **Load live demo**.
 
+## Founder admin (posjeti + feedback)
+
+Jedan privatni link (isti ključ kao `USAGE_STATS_KEY` na Renderu):
+
+`https://TVOJ-URL.onrender.com/admin/insights?key=TVOJ_USAGE_STATS_KEY`
+
+Vidiš:
+- **Unique sessions**, landing, page views, Run analysis, export
+- **Recent activity** — tko je što uradio (anonimni session id)
+- **Feedback inbox** — svi komentari + email iz forme
+
+**Feedback ne stiže automatski na Gmail** osim ako postaviš SMTP na Renderu (`SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`). Inače je samo u admin inboxu.
+
+**Napomena:** Render bez persistent diska briše SQLite na redeploy — stari feedback može nestati.
+
 ## Usage insights (bez Google Analytics)
 
 U Render **Environment** dodaj npr.:

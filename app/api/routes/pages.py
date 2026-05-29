@@ -77,3 +77,12 @@ async def reports_page(request: Request):
 @router.get("/guide", response_class=HTMLResponse)
 async def guide_page(request: Request):
     return templates.TemplateResponse("guide.html", _page_ctx(request, page="guide"))
+
+
+@router.get("/admin/insights", response_class=HTMLResponse)
+async def usage_insights_page(request: Request, key: str | None = None):
+    """Private usage dashboard — open with ?key= matching USAGE_STATS_KEY on the server."""
+    return templates.TemplateResponse(
+        "insights.html",
+        _page_ctx(request, page="insights", insights_key=key or ""),
+    )

@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.feedback import FeedbackEntry
+from app.utils.founder_access import verify_founder_key
 from app.services.demo_bootstrap import bootstrap_atlas_if_needed, get_bootstrap_state
 from app.services.demo_loader_service import DemoLoaderService, get_demo_companies
 from app.services.reset_service import ResetService
@@ -12,6 +15,35 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 @router.get("/platform-status")
 async def platform_status(db: AsyncSession = Depends(get_db)):
     return await ResetService(db).platform_status()
+
+
+@router.get("/feedback")
+async def list_feedback(
+    key: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    """Founder inbox — all feedback stored in SQLite (requires USAGE_STATS_KEY)."""
+    verify_founder_key(key)
+    result = await db.execute(
+        select(FeedbackEntry).order_by(FeedbackEntry.created_at.desc()).limit(limit)
+    )
+    rows = result.scalars().all()
+    return {
+        "count": len(rows),
+        "entries": [
+            {
+                "id": e.id,
+                "rating": e.rating,
+                "feedback_text": e.feedback_text,
+                "email_optional": e.email_optional,
+                "most_useful": e.most_useful,
+                "session_id": e.session_id,
+                "created_at": e.created_at.isoformat() if e.created_at else None,
+            }
+            for e in rows
+        ],
+    }
 
 
 @router.post("/clear-imported-datasets")
