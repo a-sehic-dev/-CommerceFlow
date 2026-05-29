@@ -22,12 +22,12 @@ ROOT = Path(__file__).resolve().parents[2]
 DEMO_DIR = ROOT / "data" / "demo_companies"
 
 DEMO_DATASET_TYPES = ("products", "inventory", "sales")
-# Guest / portfolio demo: Atlas Retail Group enterprise workspace only.
-DEMO_WORKSPACE_KEYS = frozenset({"atlas"})
-ATLAS_DEMO_FILES = {
-    "products": "atlas_products.xlsx",
-    "inventory": "atlas_inventory.xlsx",
-    "sales": "atlas_sales_q1_2026.xlsx",
+# Guest / portfolio demo: ChronoHaus Watch Co. (medium-size, fast on Render).
+DEMO_WORKSPACE_KEYS = frozenset({"watch"})
+WATCH_DEMO_FILES = {
+    "products": "watch_products.xlsx",
+    "inventory": "watch_inventory.xlsx",
+    "sales": "watch_sales_2025.xlsx",
 }
 
 
@@ -143,9 +143,9 @@ class DemoLoaderService:
 
     def _resolve_workspace_key(self, company: str, workspaces: dict[str, dict[str, str]]) -> str:
         key = company.lower().strip()
-        if key in ("sandbox", "demo", "guest"):
-            if "atlas" in workspaces:
-                return "atlas"
+        if key in ("sandbox", "demo", "guest", "atlas"):
+            if "watch" in workspaces:
+                return "watch"
         if key in workspaces:
             return key
         if not workspaces:
@@ -188,7 +188,7 @@ class DemoLoaderService:
 
         return {
             "success": True,
-            "message": "Atlas demo is loaded — click Run Your Analysis to view KPIs and charts.",
+            "message": "Watch demo is loaded — click Run Your Analysis to view KPIs and charts.",
             "company": key,
             "import_ids": import_ids,
             "available_workspaces": sorted(all_imports.keys()),

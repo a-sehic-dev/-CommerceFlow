@@ -2055,7 +2055,7 @@ const CF = {
 
     if (status.demo_ready) {
       await CF.loadActiveDatasetsBar();
-      CF.showDemoWorkspaceBanner('atlas');
+      CF.showDemoWorkspaceBanner('watch');
       return;
     }
 
@@ -2070,7 +2070,7 @@ const CF = {
       }
       await CF.loadActiveDatasetsBar();
       if (CF.platformStatus?.demo_ready) {
-        CF.showDemoWorkspaceBanner('atlas');
+        CF.showDemoWorkspaceBanner('watch');
         CF.toast('Atlas demo is ready. Click Run Your Analysis.', 'success', 8000);
       }
       return;
@@ -2081,7 +2081,7 @@ const CF = {
       const r = await CF.fetchJSON('/api/admin/demo/bootstrap', { method: 'POST' });
       await CF.loadActiveDatasetsBar();
       await CF.refreshPlatformUI();
-      CF.showDemoWorkspaceBanner('atlas');
+      CF.showDemoWorkspaceBanner('watch');
       CF.toast(r.message || 'Atlas demo is ready. Click Run Your Analysis.', 'success', 8000);
     } catch (e) {
       await CF.loadDemoCompany('sandbox');

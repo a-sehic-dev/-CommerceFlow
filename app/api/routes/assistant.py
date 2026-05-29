@@ -11,10 +11,13 @@ from collections import defaultdict, deque
 from email.message import EmailMessage
 from typing import Deque
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.database import get_db
+from app.services.usage_tracking_service import UsageTrackingService
 from app.utils.app_timezone import now_local
 
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])
@@ -258,7 +261,11 @@ def _call_openai(message: str, history: list[AssistantMessage]) -> str:
 
 
 @router.post("/chat", response_model=AssistantChatResponse)
-async def assistant_chat(body: AssistantChatRequest, request: Request):
+async def assistant_chat(
+    body: AssistantChatRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     settings = get_settings()
     ip = _client_ip(request)
     remaining = _enforce_limits(body.session_id, ip)
@@ -297,6 +304,12 @@ async def assistant_chat(body: AssistantChatRequest, request: Request):
             support_email=settings.assistant_alert_email,
         )
 
+    await UsageTrackingService(db).record(
+        event_type="assistant_chat",
+        path="/",
+        session_id=body.session_id,
+        meta={"configured": True},
+    )
     return AssistantChatResponse(
         reply=reply,
         remaining=remaining,

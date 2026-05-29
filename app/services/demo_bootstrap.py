@@ -1,4 +1,4 @@
-"""Pre-load Atlas guest demo so visitors never upload files manually."""
+"""Pre-load guest watch demo so visitors never upload files manually."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.services.active_dataset_service import ActiveDatasetService
 from app.services.demo_loader_service import (
-    ATLAS_DEMO_FILES,
+    WATCH_DEMO_FILES,
     DemoLoaderService,
     discover_demo_companies,
 )
@@ -20,7 +20,7 @@ logger = logging.getLogger("commerceflow.demo_bootstrap")
 
 _bootstrap_lock = asyncio.Lock()
 _bootstrap_state: dict[str, Any] = {
-    "status": "idle",  # idle | running | ready | failed
+    "status": "idle",
     "message": "",
     "company": None,
 }
@@ -35,11 +35,10 @@ def should_auto_bootstrap() -> bool:
     return settings.auto_bootstrap_demo and settings.workspace_mode == "demo_workspace"
 
 
-async def atlas_workspace_ready(session: AsyncSession) -> bool:
-    """True when all three Atlas imports exist and are selected for analysis."""
+async def watch_workspace_ready(session: AsyncSession) -> bool:
     loader = DemoLoaderService(session)
     ids: dict[str, int] = {}
-    for dtype, filename in ATLAS_DEMO_FILES.items():
+    for dtype, filename in WATCH_DEMO_FILES.items():
         record = await loader._existing_completed_import(filename)
         if not record:
             return False
@@ -53,34 +52,38 @@ async def atlas_workspace_ready(session: AsyncSession) -> bool:
     )
 
 
-async def bootstrap_atlas_if_needed(session: AsyncSession, *, force: bool = False) -> dict:
+async def bootstrap_watch_if_needed(session: AsyncSession, *, force: bool = False) -> dict:
     if not should_auto_bootstrap():
         return {"ready": False, "skipped": True, "message": "Auto bootstrap disabled"}
 
     if not discover_demo_companies():
-        return {"ready": False, "skipped": True, "message": "Atlas demo files missing on server"}
+        return {"ready": False, "skipped": True, "message": "Watch demo files missing on server"}
 
-    if not force and await atlas_workspace_ready(session):
+    if not force and await watch_workspace_ready(session):
         return {
             "ready": True,
             "skipped": True,
-            "message": "Atlas demo workspace already loaded",
-            "company": "atlas",
+            "message": "Watch demo workspace already loaded",
+            "company": "watch",
         }
 
     loader = DemoLoaderService(session)
-    result = await loader.load_company("atlas", fresh=False)
+    result = await loader.load_company("watch", fresh=False)
     return {
         "ready": True,
         "skipped": False,
-        "message": result.get("message") or "Atlas demo workspace loaded",
-        "company": result.get("company", "atlas"),
+        "message": result.get("message") or "Watch demo workspace loaded",
+        "company": result.get("company", "watch"),
         "import_ids": result.get("import_ids"),
     }
 
 
+# Backward-compatible aliases
+bootstrap_atlas_if_needed = bootstrap_watch_if_needed
+atlas_workspace_ready = watch_workspace_ready
+
+
 async def run_startup_demo_bootstrap() -> None:
-    """Background task: import Atlas XLSX packs on empty DB (Render redeploys)."""
     if not should_auto_bootstrap():
         return
 
@@ -90,20 +93,20 @@ async def run_startup_demo_bootstrap() -> None:
         if _bootstrap_state["status"] == "running":
             return
         _bootstrap_state["status"] = "running"
-        _bootstrap_state["message"] = "Loading Atlas Retail Group demo datasets…"
+        _bootstrap_state["message"] = "Loading ChronoHaus Watch Co. demo datasets…"
 
     try:
         async with async_session_factory() as session:
-            if await atlas_workspace_ready(session):
+            if await watch_workspace_ready(session):
                 _bootstrap_state["status"] = "ready"
-                _bootstrap_state["message"] = "Atlas demo workspace already loaded"
-                _bootstrap_state["company"] = "atlas"
+                _bootstrap_state["message"] = "Watch demo workspace already loaded"
+                _bootstrap_state["company"] = "watch"
                 return
-            result = await bootstrap_atlas_if_needed(session)
+            result = await bootstrap_watch_if_needed(session)
             await session.commit()
         _bootstrap_state["status"] = "ready"
         _bootstrap_state["message"] = result.get("message", "")
-        _bootstrap_state["company"] = result.get("company", "atlas")
+        _bootstrap_state["company"] = result.get("company", "watch")
         logger.info("Demo bootstrap finished: %s", result)
     except Exception as exc:
         _bootstrap_state["status"] = "failed"

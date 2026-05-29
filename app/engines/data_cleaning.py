@@ -12,6 +12,12 @@ class DataCleaningEngine:
 
     FUZZY_THRESHOLD = 88
 
+    @staticmethod
+    def _title_similarity(a: str, b: str) -> float:
+        if not a or not b:
+            return 0.0
+        return SequenceMatcher(None, a, b).ratio() * 100
+
     def analyze(self, products_df: pd.DataFrame) -> dict:
         if products_df.empty:
             return {"issues": [], "quality_score": 100, "duplicates": [], "missing_fields": []}

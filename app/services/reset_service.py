@@ -103,10 +103,10 @@ class ResetService:
         alert_count = await self._scalar_count(Alert)
         active = await self._active_has_selection()
         has_analysis = await AnalysisStateService(self.session).has_generated_analysis()
-        from app.services.demo_bootstrap import atlas_workspace_ready, get_bootstrap_state
+        from app.services.demo_bootstrap import get_bootstrap_state, watch_workspace_ready
         from app.services.demo_loader_service import get_demo_companies
 
-        demo_ready = await atlas_workspace_ready(self.session)
+        demo_ready = await watch_workspace_ready(self.session)
 
         return {
             "has_imports": import_count > 0,

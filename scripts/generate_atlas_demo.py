@@ -617,7 +617,11 @@ def compute_analytics_snapshot(
         "revenue_raw": revenue,
         "metrics": m,
         "inventory_summary": inv_summary,
-        "segment_counts": products["operational_segment"].value_counts().to_dict(),
+        "segment_counts": (
+            products["operational_segment"].value_counts().to_dict()
+            if "operational_segment" in products.columns
+            else {}
+        ),
         "preview": {
             "revenue": _fmt_currency(revenue),
             "grossMargin": _fmt_pct(float(m.get("gross_margin_pct") or 0)),

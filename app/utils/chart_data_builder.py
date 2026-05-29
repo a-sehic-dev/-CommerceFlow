@@ -153,8 +153,8 @@ def fallback_revenue_trend(sales_df: pd.DataFrame, *, limit: int = 90) -> list[d
 
 def _demo_revenue_trend() -> list[dict]:
     """Fallback revenue trend — synced from Atlas analytics snapshot."""
-    daily_avg = 475528.45100000006
-    multipliers = [0.96, 0.95, 0.98, 0.9, 1.0, 0.98, 0.96, 0.96, 0.94, 0.94, 0.95, 0.99]
+    daily_avg = 35935.77544444444
+    multipliers = [0.47, 0.53, 0.51, 0.2, 0.63, 0.51, 0.33, 0.66, 0.22, 0.29, 0.4, 0.2]
     return [
         {"date": f"2026-01-{i + 1:02d}", "revenue": round(daily_avg * multipliers[i % len(multipliers)], 2)}
         for i in range(len(multipliers))
@@ -163,18 +163,16 @@ def _demo_revenue_trend() -> list[dict]:
 def _demo_categories() -> list[dict]:
     """Fallback categories — synced from Atlas analytics snapshot."""
     return [
-        {"category": "Electronics", "revenue": 19686877.87},
-        {"category": "Gaming", "revenue": 5563682.88},
-        {"category": "Fashion", "revenue": 4707731.66},
-        {"category": "Home & Living", "revenue": 3423804.85},
-        {"category": "Office", "revenue": 3423804.85},
-        {"category": "Smart Home", "revenue": 3423804.85},
-        {"category": "Other", "revenue": 2995829.24},
+        {"category": "Pilot", "revenue": 711528.35},
+        {"category": "Sport", "revenue": 679186.16},
+        {"category": "Dress", "revenue": 679186.16},
+        {"category": "Dive", "revenue": 614501.76},
+        {"category": "Smart Hybrid", "revenue": 549817.36},
     ]
 
 def _demo_inventory_risk() -> dict[str, int]:
     """Fallback inventory risk — synced from Atlas analytics snapshot."""
-    return {"Low": 880, "Medium": 1834, "Critical": 406}
+    return {"Low": 11, "Medium": 164, "Critical": 0}
 
 def ensure_chart_payload(chart_data: dict[str, Any]) -> dict[str, Any]:
     """Guarantee chart payloads contain renderable non-empty series."""

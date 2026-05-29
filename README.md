@@ -6,7 +6,7 @@
 
 ![CommerceFlow](https://img.shields.io/badge/Python-3.11+-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green) ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
-> **Demo ethics:** The public demo workspace uses synthetic **Atlas Retail Group** data only (`data/demo_companies/atlas_*.xlsx`). Legacy Nike/Apple/Zara packs are not loaded in guest demo mode. See [FOUNDER.md](FOUNDER.md) for LinkedIn positioning and pilot outreach.
+> **Demo ethics:** The public demo workspace uses synthetic **ChronoHaus Watch Co.** data (`data/demo_companies/watch_*.xlsx`, ~4.5k sales). See [FOUNDER.md](FOUNDER.md) for LinkedIn positioning and pilot outreach.
 
 ## Features
 

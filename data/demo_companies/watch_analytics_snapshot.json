@@ -1,0 +1,91 @@
+{
+  "generated_at": "2026-05-29T08:05:04.572075+00:00",
+  "revenue_raw": 3234219.79,
+  "metrics": {
+    "total_revenue": 3234219.79,
+    "total_orders": 4500,
+    "avg_order_value": 718.72,
+    "gross_margin_pct": 42.4,
+    "inventory_efficiency": 70.8,
+    "operational_risk_score": 72.4,
+    "active_alerts": 350,
+    "product_count": 120,
+    "dead_inventory_value": 0.0,
+    "profit_leakage_estimate": 485132.97
+  },
+  "inventory_summary": {
+    "avg_health_score": 39.8,
+    "low_stock_count": 0,
+    "overstock_count": 129,
+    "slow_moving_count": 35,
+    "dead_inventory_count": 0,
+    "healthy_count": 11,
+    "insufficient_activity_count": 0,
+    "dead_inventory_value": 0.0,
+    "recoverable_dead_inventory_value": 0.0,
+    "slow_moving_value": 796199.09,
+    "overstock_value": 2089950.04,
+    "healthy_inventory_value": 37638.79
+  },
+  "segment_counts": {},
+  "preview": {
+    "revenue": "$3.2M",
+    "grossMargin": "42.4%",
+    "inventoryEfficiency": "70.8%",
+    "riskScore": "72.4",
+    "deadInventory": "$0",
+    "ordersAnalyzed": "4,500",
+    "activeProducts": "120",
+    "operationalAlerts": "350",
+    "revenueTrendBars": [
+      47,
+      53,
+      51,
+      20,
+      63,
+      51,
+      33,
+      66,
+      22,
+      29,
+      40,
+      20
+    ],
+    "categoryMix": [
+      {
+        "label": "Pilot",
+        "pct": 22
+      },
+      {
+        "label": "Sport",
+        "pct": 21
+      },
+      {
+        "label": "Dress",
+        "pct": 21
+      },
+      {
+        "label": "Dive",
+        "pct": 19
+      },
+      {
+        "label": "Smart Hybrid",
+        "pct": 17
+      }
+    ],
+    "inventoryRisk": [
+      {
+        "label": "Low",
+        "pct": 9
+      },
+      {
+        "label": "Medium",
+        "pct": 137
+      },
+      {
+        "label": "Critical",
+        "pct": 0
+      }
+    ]
+  }
+}

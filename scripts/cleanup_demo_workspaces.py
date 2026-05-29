@@ -23,7 +23,12 @@ DEMO_DIR = ROOT / "data" / "demo_companies"
 DATASET_MARKERS = ("_inventory", "_products", "_sales")
 LEGACY_PREFIXES = ("inventory_", "products_", "sales_")
 LEGACY_BRAND_MARKERS = ("nike", "apple", "zara")
-ATLAS_FILES = (
+WATCH_FILES = (
+    "watch_products.xlsx",
+    "watch_inventory.xlsx",
+    "watch_sales_2025.xlsx",
+)
+ATLAS_LEGACY = (
     "atlas_products.xlsx",
     "atlas_inventory.xlsx",
     "atlas_sales_q1_2026.xlsx",
@@ -31,15 +36,18 @@ ATLAS_FILES = (
 
 
 def purge_legacy_brand_files() -> list[str]:
-    """Remove Nike / Apple / Zara XLSX packs from disk (Atlas-only public demo)."""
+    """Remove legacy brand packs and heavy Atlas files from disk."""
     actions: list[str] = []
     if not DEMO_DIR.is_dir():
         return actions
+    keep = {n.lower() for n in WATCH_FILES}
     for path in sorted(DEMO_DIR.glob("*.xlsx")):
         lower = path.name.lower()
-        if "atlas" in lower:
+        if lower in keep:
             continue
-        if any(marker in lower for marker in LEGACY_BRAND_MARKERS):
+        if lower in {n.lower() for n in ATLAS_LEGACY} or any(
+            marker in lower for marker in LEGACY_BRAND_MARKERS
+        ):
             path.unlink()
             actions.append(f"deleted legacy file {path.name}")
     return actions
@@ -68,20 +76,22 @@ def normalize_files() -> list[str]:
     return actions
 
 
-def _is_legacy_brand_import(filename: str) -> bool:
+def _is_legacy_import(filename: str) -> bool:
     lower = filename.lower()
-    if "atlas" in lower:
+    if lower in {n.lower() for n in WATCH_FILES}:
         return False
+    if lower in {n.lower() for n in ATLAS_LEGACY}:
+        return True
     return any(marker in lower for marker in LEGACY_BRAND_MARKERS)
 
 
 async def purge_legacy_brand_imports() -> list[str]:
-    """Remove Nike / Apple / Zara demo imports; keep Atlas only."""
+    """Remove Atlas / Nike / Apple / Zara demo imports; keep watch only."""
     actions: list[str] = []
     async with async_session_factory() as session:
         result = await session.execute(select(ImportRecord))
         records = list(result.scalars().all())
-        remove = [r for r in records if _is_legacy_brand_import(r.filename)]
+        remove = [r for r in records if _is_legacy_import(r.filename)]
         remove_ids = [r.id for r in remove]
         if remove_ids:
             await session.execute(delete(SalesRecord).where(SalesRecord.import_id.in_(remove_ids)))
@@ -97,12 +107,12 @@ async def purge_legacy_brand_imports() -> list[str]:
     return actions
 
 
-async def activate_atlas_workspace() -> list[str]:
-    """Point active analysis selection at latest completed Atlas imports."""
+async def activate_watch_workspace() -> list[str]:
+    """Point active analysis selection at latest completed watch imports."""
     actions: list[str] = []
     async with async_session_factory() as session:
         ids: dict[str, int] = {}
-        for filename in ATLAS_FILES:
+        for filename in WATCH_FILES:
             dtype = "products" if "products" in filename else "inventory" if "inventory" in filename else "sales"
             result = await session.execute(
                 select(ImportRecord)
@@ -123,11 +133,14 @@ async def activate_atlas_workspace() -> list[str]:
             )
             await session.commit()
             actions.append(
-                f"active workspace set to Atlas (products={ids['products']}, "
+                f"active workspace set to watch (products={ids['products']}, "
                 f"sales={ids['sales']}, inventory={ids['inventory']})"
             )
         else:
-            actions.append(f"Atlas imports incomplete — missing: {[t for t in ('products', 'sales', 'inventory') if t not in ids]}")
+            actions.append(
+                f"Watch imports incomplete — missing: "
+                f"{[t for t in ('products', 'sales', 'inventory') if t not in ids]}"
+            )
     return actions
 
 
@@ -201,7 +214,7 @@ async def main() -> None:
     actions = normalize_files()
     actions.extend(await purge_legacy_brand_imports())
     actions.extend(await cleanup_import_records())
-    actions.extend(await activate_atlas_workspace())
+    actions.extend(await activate_watch_workspace())
     if actions:
         print("\n".join(actions))
     else:

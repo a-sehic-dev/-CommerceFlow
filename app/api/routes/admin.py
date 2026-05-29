@@ -7,7 +7,7 @@ from app.database import get_db
 from app.models.feedback import FeedbackEntry
 from app.models.usage_event import UsageEvent
 from app.utils.founder_access import verify_founder_key
-from app.services.demo_bootstrap import bootstrap_atlas_if_needed, get_bootstrap_state
+from app.services.demo_bootstrap import bootstrap_watch_if_needed, get_bootstrap_state
 from app.services.demo_loader_service import DemoLoaderService, get_demo_companies
 from app.services.reset_service import ResetService
 
@@ -116,9 +116,9 @@ async def rebuild_analytics_engine(db: AsyncSession = Depends(get_db)):
 
 @router.post("/demo/bootstrap")
 async def bootstrap_demo(db: AsyncSession = Depends(get_db)):
-    """Idempotent: ensure Atlas guest workspace is imported and selected."""
+    """Idempotent: ensure watch guest workspace is imported and selected."""
     try:
-        result = await bootstrap_atlas_if_needed(db)
+        result = await bootstrap_watch_if_needed(db)
         await db.commit()
         result["bootstrap"] = get_bootstrap_state()
         return result

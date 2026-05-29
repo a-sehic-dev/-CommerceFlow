@@ -32,9 +32,9 @@ DEMO_FILE_TYPES: dict[str, str] = {
     "sales_sample.csv": "sales",
     "products_sample.csv": "products",
     "inventory_sample.csv": "inventory",
-    "atlas_inventory.xlsx": "inventory",
-    "atlas_products.xlsx": "products",
-    "atlas_sales_q1_2026.xlsx": "sales",
+    "watch_inventory.xlsx": "inventory",
+    "watch_products.xlsx": "products",
+    "watch_sales_2025.xlsx": "sales",
     "Demo Sales Dataset.xlsx": "sales",
     "Demo Products Catalog.xlsx": "products",
     "Demo Inventory Dataset.xlsx": "inventory",
@@ -48,7 +48,7 @@ FRIENDLY_NAMES: dict[str, str] = {
 DEMO_FILENAMES = frozenset(name.lower() for name in DEMO_FILE_TYPES)
 
 COMPANY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"atlas", re.I), "Atlas Retail Group"),
+    (re.compile(r"watch|chrono|wch-", re.I), "ChronoHaus Watch Co."),
     (re.compile(r"northwind", re.I), "Northwind Retail"),
 ]
 
