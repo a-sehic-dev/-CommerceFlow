@@ -10,6 +10,12 @@
     <a href="https://commerceflow-1.onrender.com/admin/insights?key=cf-insights-sedin-2026" class="analysis-modal-link">commerceflow-1.onrender.com</a>
     — not this hostname. Suspend or stop using <code>commerceflow-svfv</code> to avoid confusion.
   </div>
+  <div class="insights-toolbar">
+    <button type="button" class="btn-sidebar-danger" id="btn-reset-insights" title="Delete all usage events and feedback on this server">
+      Reset founder counters (start fresh)
+    </button>
+    <p class="insights-hint">Clears visitor stats + feedback inbox only. Does not delete guest imports or dashboard data.</p>
+  </div>
   <p class="insights-loading" id="insights-loading">Loading…</p>
   <div class="insights-card insights-health hidden" id="insights-health"></div>
   <div id="insights-content" class="hidden">
@@ -57,6 +63,22 @@
     errEl.textContent = 'Add ?key=YOUR_USAGE_STATS_KEY to the URL (same as Render env USAGE_STATS_KEY).';
     return;
   }
+
+  document.getElementById('btn-reset-insights')?.addEventListener('click', async () => {
+    if (!confirm('Delete ALL usage events and feedback on this server? Guest imports stay.')) return;
+    const btn = document.getElementById('btn-reset-insights');
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/reset-insights?key=${encodeURIComponent(key)}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Reset failed');
+      alert(data.message || 'Reset complete. Page will reload.');
+      location.reload();
+    } catch (e) {
+      alert(e.message || 'Reset failed');
+      if (btn) btn.disabled = false;
+    }
+  });
 
   const headers = { Accept: 'application/json' };
 

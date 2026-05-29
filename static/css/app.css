@@ -2629,6 +2629,17 @@
   font-size: 0.82rem;
   line-height: 1.45;
 }
+.insights-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+.insights-toolbar .insights-hint {
+  margin: 0;
+  flex: 1 1 12rem;
+}
 @media (max-width: 900px) {
   .import-req-grid {
     grid-template-columns: 1fr;

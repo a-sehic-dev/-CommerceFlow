@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -50,6 +50,26 @@ async def analytics_health(
             "Set the same USAGE_STATS_KEY on every Render service you use. "
             "Redeploy clears SQLite without a persistent disk."
         ),
+    }
+
+
+@router.post("/reset-insights")
+async def reset_founder_insights(
+    key: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Clear all usage events and feedback (founder-only). Demo/import data unchanged."""
+    verify_founder_key(key)
+    usage_result = await db.execute(delete(UsageEvent))
+    feedback_result = await db.execute(delete(FeedbackEntry))
+    await db.commit()
+    return {
+        "success": True,
+        "deleted": {
+            "usage_events": int(usage_result.rowcount or 0),
+            "feedback_entries": int(feedback_result.rowcount or 0),
+        },
+        "message": "Founder analytics reset. Run a fresh incognito test on this hostname.",
     }
 
 
