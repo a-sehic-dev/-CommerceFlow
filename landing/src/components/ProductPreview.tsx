@@ -22,7 +22,7 @@ export function ProductPreview() {
       <div className="mb-10 text-center">
         <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Executive workspace preview</h2>
         <p className="mx-auto mt-3 max-w-2xl text-slate-400">
-          Live operational analytics from CommerceFlow&apos;s ChronoHaus Watch Co. demo — KPIs, charts,
+          Live operational analytics from CommerceFlow&apos;s Atlas Retail Group stress-test — KPIs, charts,
           alerts, and export-ready reporting at enterprise scale.
         </p>
       </div>
@@ -32,7 +32,7 @@ export function ProductPreview() {
           <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
           <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
           <span className="ml-3 text-xs font-medium text-slate-500">
-            CommerceFlow — ChronoHaus Watch Co. · Executive Overview
+            CommerceFlow — Atlas Retail Group · Executive Overview
           </span>
         </div>
         <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">

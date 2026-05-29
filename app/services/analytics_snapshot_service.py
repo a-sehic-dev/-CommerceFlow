@@ -31,7 +31,7 @@ from app.utils.json_safe import sanitize_for_json
 logger = logging.getLogger("commerceflow.snapshot")
 
 ROOT = Path(__file__).resolve().parents[2]
-MARKETING_SNAPSHOT_PATH = ROOT / "data" / "demo_companies" / "watch_analytics_snapshot.json"
+MARKETING_SNAPSHOT_PATH = ROOT / "data" / "demo_companies" / "atlas_analytics_snapshot.json"
 
 
 def format_preview_metrics(metrics: dict[str, Any]) -> dict[str, str]:

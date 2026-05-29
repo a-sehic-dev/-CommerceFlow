@@ -1,6 +1,6 @@
 # CommerceFlow Demo Datasets
 
-Public guest workspace: **ChronoHaus Watch Co.** — medium-size retail demo (fast on Render).
+**Live import / guest workspace (fast on Render):** **ChronoHaus Watch Co.**
 
 | Dataset | File |
 |---------|------|
@@ -8,18 +8,13 @@ Public guest workspace: **ChronoHaus Watch Co.** — medium-size retail demo (fa
 | **Inventory** | `watch_inventory.xlsx` |
 | **Sales** | `watch_sales_2025.xlsx` |
 
-~120 products · ~180 inventory rows · ~4,500 sales lines (2025).
+~120 products · ~4,500 sales (2025).
+
+**Marketing / landing preview KPIs** use `atlas_analytics_snapshot.json` ($42.8M, 100k orders stress-test story) — not loaded into Import History.
 
 ## Regenerate
 
 ```bash
-python scripts/generate_watch_demo.py
+python scripts/generate_watch_demo.py    # import files
+# Atlas snapshot (preview only): restore from repo or regenerate via generate_atlas_demo.py
 ```
-
-Rebuild landing after snapshot change:
-
-```bash
-cd landing && npm run build
-```
-
-Legacy Atlas 100k packs were removed — too heavy for shared SQLite hosting.

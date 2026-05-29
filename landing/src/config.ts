@@ -8,28 +8,30 @@ export const LINKS = {
   demo: "/dashboard",
 } as const;
 
-/** Latest ChronoHaus Watch Co. demo snapshot for landing preview. */
+/** Latest Atlas Retail Group enterprise stress-test snapshot for landing preview. */
 export const PREVIEW_ANALYTICS = {
-  revenue: "$3.2M",
-  grossMargin: "42.4%",
-  inventoryEfficiency: "70.8%",
-  riskScore: "72.4",
-  deadInventory: "$0",
-  ordersAnalyzed: "4,500",
-  activeProducts: "120",
-  operationalAlerts: "350",
-  revenueTrendBars: [47, 53, 51, 20, 63, 51, 33, 66, 22, 29, 40, 20],
+  revenue: "$42.8M",
+  grossMargin: "46.3%",
+  inventoryEfficiency: "69.4%",
+  riskScore: "88.2",
+  deadInventory: "$4.8M",
+  ordersAnalyzed: "100,000",
+  activeProducts: "3,200",
+  operationalAlerts: "1,000",
+  revenueTrendBars: [96, 95, 98, 90, 100, 98, 96, 96, 94, 94, 95, 99],
   categoryMix: [
-    { label: "Pilot", pct: 22 },
-    { label: "Sport", pct: 21 },
-    { label: "Dress", pct: 21 },
-    { label: "Dive", pct: 19 },
-    { label: "Smart Hybrid", pct: 17 },
+    { label: "Electronics", pct: 46 },
+    { label: "Gaming", pct: 13 },
+    { label: "Fashion", pct: 11 },
+    { label: "Home & Living", pct: 8 },
+    { label: "Office", pct: 8 },
+    { label: "Smart Home", pct: 8 },
+    { label: "Other", pct: 7 },
   ],
   inventoryRisk: [
-    { label: "Low", pct: 9 },
-    { label: "Medium", pct: 137 },
-    { label: "Critical", pct: 0 },
+    { label: "Low", pct: 28 },
+    { label: "Medium", pct: 57 },
+    { label: "Critical", pct: 15 },
   ],
 } as const;
 
