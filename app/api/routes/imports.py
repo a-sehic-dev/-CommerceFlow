@@ -16,6 +16,7 @@ from app.services.import_progress import has_imports_in_progress
 from app.services.import_registry import has_active_imports, is_filename_busy
 from app.services.import_runner import import_runner
 from app.services.import_service import ImportService
+from app.services.import_stale_recovery import recover_stale_imports
 from app.utils.cache import analytics_cache
 from app.utils.dataset_display import (
     dataset_source_label,
@@ -87,10 +88,11 @@ async def upload_file(
     if len(content) > settings.max_upload_bytes:
         raise HTTPException(400, f"File exceeds {settings.max_upload_size_mb}MB limit")
 
+    await recover_stale_imports(db)
     if await has_active_imports():
         raise HTTPException(
             409,
-            "Another import is already in progress. Please wait until it completes.",
+            "Another import is already in progress. Wait a moment or delete the stuck import in history.",
         )
     if await is_filename_busy(file.filename):
         raise HTTPException(409, f"Import already running for: {file.filename}")
@@ -115,8 +117,24 @@ async def import_status(import_id: int, db: AsyncSession = Depends(get_db)):
     return _import_response(record)
 
 
+@router.post("/{import_id}/cancel")
+async def cancel_import(import_id: int, db: AsyncSession = Depends(get_db)):
+    """Mark a stuck import as failed so new uploads can proceed."""
+    await recover_stale_imports(db)
+    service = ImportService(db)
+    record = await service.get_import(import_id)
+    if not record:
+        raise HTTPException(404, "Import not found")
+    if record.status not in ST.IN_PROGRESS:
+        return {"success": True, "message": "Import is not in progress", "id": import_id}
+    await service.mark_failed(import_id, "Import cancelled by user.")
+    analytics_cache.invalidate()
+    return {"success": True, "message": "Import cancelled", "id": import_id}
+
+
 @router.get("/in-progress")
 async def imports_in_progress(db: AsyncSession = Depends(get_db)):
+    await recover_stale_imports(db)
     result = await db.execute(
         select(ImportRecord).where(ImportRecord.status.in_(tuple(ST.IN_PROGRESS)))
     )

@@ -1394,7 +1394,7 @@ const CF = {
         CF.updateImportBusyState();
         CF.stopImportSyncIfIdle();
         reject(new Error('Import timed out. Check Import History for status.'));
-      }, 600000);
+      }, 180000);
 
       const attachWaiter = () => ({
         resolve: (record) => {
@@ -1680,6 +1680,9 @@ const CF = {
           ? `<div class="import-confirm-row"><span class="badge-dataset badge-dataset-confirm">Needs type</span>
              <button type="button" class="btn-secondary text-xs" onclick="CF.openTypeConfirmById(${r.id})">Confirm</button></div>`
           : ''}
+        ${inProgress
+          ? `<div class="import-confirm-row"><button type="button" class="btn-secondary text-xs" onclick="CF.cancelImport(${r.id})">Cancel stuck import</button></div>`
+          : ''}
       </div>
       <div class="import-card-actions">
         <button type="button" class="import-delete-btn" title="Delete dataset" onclick="CF.openDeleteImportModal('single', ${r.id})" aria-label="Delete">
@@ -1687,6 +1690,21 @@ const CF = {
         </button>
       </div>
     </article>`;
+  },
+
+  async cancelImport(importId) {
+    try {
+      await CF.fetchJSON(`/api/imports/${importId}/cancel`, { method: 'POST' });
+      CF.untrackImport(importId);
+      CF.updateImportBusyState();
+      CF.stopImportSyncIfIdle();
+      CF.toast('Import cancelled — you can upload again', 'success');
+      await CF.loadImportHistory();
+      const status = document.getElementById('upload-status');
+      if (status) status.classList.add('hidden');
+    } catch (e) {
+      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Cancel failed', 'error');
+    }
   },
 
   toggleImportSelect(id, checked) {

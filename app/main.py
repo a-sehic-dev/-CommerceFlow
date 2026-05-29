@@ -24,6 +24,15 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     ensure_directories()
     await init_db()
+    from app.database import async_session_factory
+    from app.services.import_stale_recovery import recover_stale_imports
+
+    async with async_session_factory() as session:
+        recovered = await recover_stale_imports(session)
+        await session.commit()
+        if recovered:
+            log_early = logging.getLogger("commerceflow")
+            log_early.info("Recovered %s stale import(s) on startup", recovered)
     from app.utils.cache import analytics_cache
 
     analytics_cache.invalidate()

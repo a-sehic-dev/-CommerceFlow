@@ -78,11 +78,19 @@ class ImportRunner:
                     await commit_session(session, label=f"import-{import_id}-processing")
                     log_import_status(import_id, ST.PROCESSING)
 
+                    effective_forced = forced_type
+                    if not effective_forced and record.dataset_type in (
+                        "products",
+                        "sales",
+                        "inventory",
+                    ):
+                        effective_forced = record.dataset_type
+
                     await service.process_file(
                         import_id,
                         file_path,
                         source_type,
-                        forced_type=forced_type,
+                        forced_type=effective_forced,
                     )
                     await commit_session(session, label=f"import-{import_id}-done")
                     analytics_cache.invalidate()
