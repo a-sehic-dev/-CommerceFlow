@@ -37,11 +37,23 @@ class AnalysisStateService:
 
     async def has_generated_analysis(self) -> bool:
         config = await self._config()
-        if config.analysis_generated_at is None:
-            return False
         stored = config.analysis_selection_key
         current = self.selection_key_for(config)
-        return bool(stored and current and stored == current)
+        if config.analysis_generated_at is not None and stored and current and stored == current:
+            return True
+        if not current:
+            return False
+        from app.services.analytics_snapshot_service import AnalyticsSnapshotService
+
+        selection = {
+            "products_import_id": config.products_import_id,
+            "sales_import_id": config.sales_import_id,
+            "inventory_import_id": config.inventory_import_id,
+        }
+        if await AnalyticsSnapshotService(self.session).load_from_db(selection):
+            await self.mark_generated()
+            return True
+        return False
 
     async def mark_generated(self) -> None:
         config = await self._config()

@@ -97,6 +97,7 @@ class ExportJobStore:
         fmt: str,
         *,
         analysis_fingerprint: str | None = None,
+        run_inline: bool = True,
     ) -> ExportJob:
         job = ExportJob(
             id=uuid.uuid4().hex[:12],
@@ -106,7 +107,10 @@ class ExportJobStore:
         )
         async with self._lock:
             self._jobs[job.id] = job
-        asyncio.create_task(_run_job(job.id))
+        if run_inline:
+            await _run_job(job.id)
+        else:
+            asyncio.create_task(_run_job(job.id))
         return job
 
     async def set_progress(self, job_id: str, progress: int, message: str) -> None:

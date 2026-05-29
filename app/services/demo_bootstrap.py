@@ -67,6 +67,14 @@ async def bootstrap_watch_if_needed(session: AsyncSession, *, force: bool = Fals
             "company": "watch",
         }
 
+    active = await ActiveDatasetService(session).get_active()
+    if not force and active.has_selection and not await watch_workspace_ready(session):
+        return {
+            "ready": False,
+            "skipped": True,
+            "message": "Operational datasets already selected — sample bootstrap skipped",
+        }
+
     loader = DemoLoaderService(session)
     result = await loader.load_company("watch", fresh=False)
     return {

@@ -59,7 +59,8 @@ const CF = {
     CF.initFeedbackExperience();
     if (!CF.isFounderAdminPage()) {
       CF.trackUsage('page_view');
-      CF.ensureGuestDemoReady().then(() => CF.afterDemoReadyPageLoad());
+      CF.afterDemoReadyPageLoad();
+      void CF.ensureGuestDemoReady();
     }
     if (location.pathname === '/reports') {
       CF.hydrateExportState();
@@ -851,9 +852,8 @@ const CF = {
       CF.markAnalysisViewReady();
       await CF.loadActiveDatasetsBar();
       CF.resetExportClientState();
-      if (location.pathname === '/reports') {
-        await CF.hydrateExportState({ analysisComplete: true });
-      }
+      await CF.hydrateExportState();
+      if (location.pathname === '/reports') await CF.loadReports();
       document.getElementById('analysis-error-panel')?.remove();
       const path = location.pathname;
       if (path === '/dashboard') CF.loadDashboard();
@@ -2089,10 +2089,25 @@ const CF = {
     CF.closeResetAnalysisModal();
   },
 
+  shouldSkipGuestBootstrap(status) {
+    if (!status) return true;
+    if (status.has_generated_analysis) return true;
+    if (status.has_active_analysis) return true;
+    if (status.has_imports && !status.demo_ready) return true;
+    return false;
+  },
+
   async ensureGuestDemoReady() {
     await CF.refreshPlatformUI();
     const status = CF.platformStatus;
     if (!status?.demo_files_ready) return;
+
+    if (CF.shouldSkipGuestBootstrap(status)) {
+      if (status.has_active_analysis || status.has_generated_analysis) {
+        await CF.loadActiveDatasetsBar();
+      }
+      return;
+    }
 
     if (status.demo_ready) {
       await CF.loadActiveDatasetsBar();
@@ -2102,12 +2117,13 @@ const CF = {
 
     const boot = status.demo_bootstrap || {};
     if (boot.status === 'running') {
-      CF.toast('Loading sample workspace (products, inventory, sales)…', 'info', 120000);
-      for (let attempt = 0; attempt < 90; attempt += 1) {
+      CF.toast('Loading sample workspace…', 'info', 8000);
+      for (let attempt = 0; attempt < 45; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         await CF.refreshPlatformUI();
         if (CF.platformStatus?.demo_ready) break;
         if (CF.platformStatus?.demo_bootstrap?.status === 'failed') break;
+        if (CF.shouldSkipGuestBootstrap(CF.platformStatus)) return;
       }
       await CF.loadActiveDatasetsBar();
       if (CF.platformStatus?.demo_ready) {
@@ -2117,15 +2133,18 @@ const CF = {
       return;
     }
 
-    CF.toast('Preparing sample workspace…', 'info', 120000);
+    CF.toast('Preparing sample workspace…', 'info', 8000);
     try {
       const r = await CF.fetchJSON('/api/admin/demo/bootstrap', { method: 'POST' });
       await CF.loadActiveDatasetsBar();
       await CF.refreshPlatformUI();
+      if (location.pathname === '/reports') await CF.loadReports();
       CF.showDemoWorkspaceBanner('watch');
       CF.toast(r.message || 'Sample workspace is ready. Click Run Your Analysis.', 'success', 8000);
     } catch (e) {
-      await CF.loadDemoCompany('sandbox');
+      if (!CF.shouldSkipGuestBootstrap(CF.platformStatus)) {
+        await CF.loadDemoCompany('sandbox');
+      }
     }
   },
 
@@ -2324,7 +2343,13 @@ const CF = {
       if (!m) throw new Error('Could not load export metadata');
       const rc = m.row_counts || {};
 
-      CF.setExportStatus(CF.exportState.ready ? 'ready' : 'idle', CF.exportState.ready ? 'Ready' : 'Awaiting export');
+      const statusLabel = !m.has_generated_analysis
+        ? 'Run analysis first'
+        : CF.exportState.ready
+          ? 'Ready'
+          : 'Awaiting export';
+      const statusState = !m.has_generated_analysis ? 'idle' : CF.exportState.ready ? 'ready' : 'idle';
+      CF.setExportStatus(statusState, statusLabel);
 
       if (!m.has_selection) {
         grid.classList.add('hidden');
@@ -2440,6 +2465,30 @@ const CF = {
         body: JSON.stringify({ report_type: reportType, format }),
       });
       CF.exportDownloadedJobs.delete(String(res.job.id));
+      const job = res.job || {};
+      if (job.status === 'completed' && job.download_url) {
+        CF.updateExportProgress(100, 'Download starting…', 'Complete');
+        CF.setExportStatus('ready', 'Ready');
+        CF.exportState.lastJob = job;
+        CF.exportState.latestWorkbook = {
+          job_id: job.id,
+          filename: job.filename,
+          download_url: job.download_url,
+          completed_at: job.completed_at,
+          ready: true,
+        };
+        CF.exportState.ready = true;
+        CF.persistExportState();
+        if (!opts.silent) {
+          CF.downloadExportOnce(
+            job,
+            reportType === 'enterprise' ? 'export_enterprise' : 'export_report',
+          );
+        }
+        setTimeout(() => CF.showExportProgress(false), 1200);
+        if (location.pathname === '/reports') await CF.loadReports();
+        return;
+      }
       await CF.pollExportJob(res.job.id, reportType, opts);
     } catch (e) {
       CF.setExportStatus('failed', 'Failed');
