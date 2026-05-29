@@ -5,6 +5,11 @@
 
 {% block content %}
 <section class="insights-panel" id="insights-panel">
+  <div id="insights-wrong-host" class="insights-alert hidden" style="margin-bottom:1rem">
+    <strong>Wrong Render service.</strong> Demo + feedback are stored on
+    <a href="https://commerceflow-1.onrender.com/admin/insights?key=cf-insights-sedin-2026" class="analysis-modal-link">commerceflow-1.onrender.com</a>
+    — not this hostname. Suspend or stop using <code>commerceflow-svfv</code> to avoid confusion.
+  </div>
   <p class="insights-loading" id="insights-loading">Loading…</p>
   <div class="insights-card insights-health hidden" id="insights-health"></div>
   <div id="insights-content" class="hidden">
@@ -39,6 +44,9 @@
 <script>
 (function () {
   const key = new URLSearchParams(location.search).get('key') || '{{ insights_key|e }}';
+  if (location.host.includes('svfv')) {
+    document.getElementById('insights-wrong-host')?.classList.remove('hidden');
+  }
   const loading = document.getElementById('insights-loading');
   const content = document.getElementById('insights-content');
   const errEl = document.getElementById('insights-error');

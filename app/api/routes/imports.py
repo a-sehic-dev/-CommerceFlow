@@ -13,7 +13,7 @@ from app.schemas.datasets import ImportCatalogResponse
 from app.constants import import_status as ST
 from app.services.dataset_catalog_service import DatasetCatalogService
 from app.services.import_progress import has_imports_in_progress
-from app.services.import_registry import has_active_imports, is_filename_busy
+from app.services.import_registry import has_active_imports, is_filename_busy, release_import
 from app.services.import_runner import import_runner
 from app.services.import_service import ImportService
 from app.services.import_stale_recovery import recover_stale_imports
@@ -128,6 +128,8 @@ async def cancel_import(import_id: int, db: AsyncSession = Depends(get_db)):
     if record.status not in ST.IN_PROGRESS:
         return {"success": True, "message": "Import is not in progress", "id": import_id}
     await service.mark_failed(import_id, "Import cancelled by user.")
+    await release_import(import_id, record.filename)
+    await db.commit()
     analytics_cache.invalidate()
     return {"success": True, "message": "Import cancelled", "id": import_id}
 
@@ -144,6 +146,7 @@ async def imports_in_progress(db: AsyncSession = Depends(get_db)):
 
 @router.get("/history")
 async def import_history(db: AsyncSession = Depends(get_db)):
+    await recover_stale_imports(db)
     service = ImportService(db)
     records = await service.list_imports()
     return [_import_response(r) for r in records if not is_internal_dataset(r.filename)]

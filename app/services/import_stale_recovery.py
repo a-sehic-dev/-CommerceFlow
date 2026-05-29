@@ -11,11 +11,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants import import_status as ST
 from app.models.import_record import ImportRecord
+from app.services.import_registry import release_import
 from app.utils.app_timezone import naive_local_now
 
 logger = logging.getLogger("commerceflow.import")
 
-STALE_MINUTES = 3
+STALE_MINUTES = 2
 
 
 async def recover_stale_imports(session: AsyncSession) -> int:
@@ -38,6 +39,7 @@ async def recover_stale_imports(session: AsyncSession) -> int:
                 "(select Products / Inventory / Sales type before upload for small files)."
             ]
         )
+        await release_import(record.id, record.filename)
         logger.warning("Recovered stale import #%s (%s)", record.id, record.filename)
     if records:
         await session.flush()

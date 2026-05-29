@@ -25,6 +25,15 @@ async def is_filename_busy(filename: str) -> bool:
         return key in _active_filenames
 
 
+async def release_import(import_id: int, filename: str | None = None) -> None:
+    """Clear in-memory locks after cancel, stale recovery, or crashed worker."""
+    key = normalize_filename(filename) if filename else None
+    async with _lock:
+        _active_ids.discard(import_id)
+        if key:
+            _active_filenames.discard(key)
+
+
 @asynccontextmanager
 async def claim_import(import_id: int, filename: str):
     key = normalize_filename(filename)
@@ -38,6 +47,4 @@ async def claim_import(import_id: int, filename: str):
     try:
         yield
     finally:
-        async with _lock:
-            _active_ids.discard(import_id)
-            _active_filenames.discard(key)
+        await release_import(import_id, filename)

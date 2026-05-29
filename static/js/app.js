@@ -1614,6 +1614,11 @@ const CF = {
     const container = document.getElementById('import-history');
     const countEl = document.getElementById('import-history-count');
     if (!container) return;
+    try {
+      await CF.fetchJSON('/api/imports/in-progress');
+    } catch {
+      /* triggers stale import recovery on server */
+    }
     const gen = ++CF._importHistoryGen;
     try {
       const records = await CF.fetchJSON('/api/imports/history');
