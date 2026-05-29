@@ -5,10 +5,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, not_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from sqlalchemy import not_
 
 from app.models.usage_event import UsageEvent
 from app.utils.app_timezone import naive_local_now
