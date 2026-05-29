@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants import import_status as ST
 from app.models.import_record import ImportRecord
-from app.services.import_registry import release_import
+from app.services.import_registry import get_active_import_ids, release_import
 from app.utils.app_timezone import naive_local_now
 
 logger = logging.getLogger("commerceflow.import")
@@ -29,7 +29,10 @@ async def recover_stale_imports(session: AsyncSession) -> int:
         )
     )
     records = list(result.scalars().all())
+    active_ids = await get_active_import_ids()
     for record in records:
+        if record.id in active_ids:
+            continue
         record.status = ST.FAILED
         record.completed_at = naive_local_now()
         record.error_count = max(1, record.error_count or 0)

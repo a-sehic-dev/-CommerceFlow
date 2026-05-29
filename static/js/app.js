@@ -12,7 +12,7 @@ const CF = {
   workspaceMode: 'demo_workspace',
   WORKSPACE_MODES: {
     demo_workspace: {
-      title: 'Demo Workspace',
+      title: 'Sample Workspace',
       subtitle: 'Explore operational analytics instantly',
     },
     authenticated_workspace: {
@@ -1305,6 +1305,11 @@ const CF = {
     CF.importBusy = true;
     try {
       const r = await CF.fetchJSON('/api/imports/upload', { method: 'POST', body: form });
+      if (!CF.importNeedsPolling(r)) {
+        await CF.handleImportTerminal(r);
+        CF.presentImportOutcome(r, status);
+        return;
+      }
       CF.trackImport(r.id);
       const final = await CF.waitForImport(r.id, {
         onTick: (tick) => CF.updateUploadStatusBanner(tick),
@@ -2097,7 +2102,7 @@ const CF = {
 
     const boot = status.demo_bootstrap || {};
     if (boot.status === 'running') {
-      CF.toast('Loading Atlas demo workspace (products, inventory, sales)…', 'info', 120000);
+      CF.toast('Loading sample workspace (products, inventory, sales)…', 'info', 120000);
       for (let attempt = 0; attempt < 90; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         await CF.refreshPlatformUI();
@@ -2107,18 +2112,18 @@ const CF = {
       await CF.loadActiveDatasetsBar();
       if (CF.platformStatus?.demo_ready) {
         CF.showDemoWorkspaceBanner('watch');
-        CF.toast('Atlas demo is ready. Click Run Your Analysis.', 'success', 8000);
+        CF.toast('Sample workspace is ready. Click Run Your Analysis.', 'success', 8000);
       }
       return;
     }
 
-    CF.toast('Preparing Atlas demo workspace…', 'info', 120000);
+    CF.toast('Preparing sample workspace…', 'info', 120000);
     try {
       const r = await CF.fetchJSON('/api/admin/demo/bootstrap', { method: 'POST' });
       await CF.loadActiveDatasetsBar();
       await CF.refreshPlatformUI();
       CF.showDemoWorkspaceBanner('watch');
-      CF.toast(r.message || 'Atlas demo is ready. Click Run Your Analysis.', 'success', 8000);
+      CF.toast(r.message || 'Sample workspace is ready. Click Run Your Analysis.', 'success', 8000);
     } catch (e) {
       await CF.loadDemoCompany('sandbox');
     }

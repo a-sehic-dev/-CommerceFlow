@@ -261,9 +261,11 @@ class ImportService:
             import time
 
             t0 = time.perf_counter()
+            log_import_stage(import_id, "classification_started", path=str(file_path))
             record.status = ST.PROCESSING
             await self._flush("import-processing")
             log_import_status(import_id, ST.PROCESSING)
+            log_import_stage(import_id, "workbook_parsing_started")
             self._seen_product_skus: set[str] = set()
             self._seen_inventory_skus: set[str] = set()
             first_chunk = True
@@ -279,6 +281,7 @@ class ImportService:
             for chunk in self._iter_file_chunks(file_path):
                 total_rows += len(chunk)
                 if first_chunk:
+                    log_import_stage(import_id, "workbook_parsing_first_chunk", rows=len(chunk))
                     raw_headers = list(chunk.columns)
                     schema = detect_schema(raw_headers)
                     log_stage("import", "Schema detected", columns=len(raw_headers), mapped=schema.get("canonical_present"))
@@ -333,6 +336,15 @@ class ImportService:
 
             if first_chunk:
                 raise ValueError("File is empty or could not be parsed")
+
+            log_import_stage(
+                import_id,
+                "workbook_parsing_completed",
+                total_rows=total_rows,
+                products=products_count,
+                sales=sales_count,
+                inventory=inv_count,
+            )
 
             total_imported = products_count + sales_count + inv_count
             if total_imported == 0 and total_rows > 0:

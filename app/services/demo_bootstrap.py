@@ -57,13 +57,13 @@ async def bootstrap_watch_if_needed(session: AsyncSession, *, force: bool = Fals
         return {"ready": False, "skipped": True, "message": "Auto bootstrap disabled"}
 
     if not discover_demo_companies():
-        return {"ready": False, "skipped": True, "message": "Watch demo files missing on server"}
+        return {"ready": False, "skipped": True, "message": "Sample workspace files missing on server"}
 
     if not force and await watch_workspace_ready(session):
         return {
             "ready": True,
             "skipped": True,
-            "message": "Watch demo workspace already loaded",
+            "message": "Sample workspace already loaded",
             "company": "watch",
         }
 
@@ -72,7 +72,7 @@ async def bootstrap_watch_if_needed(session: AsyncSession, *, force: bool = Fals
     return {
         "ready": True,
         "skipped": False,
-        "message": result.get("message") or "Watch demo workspace loaded",
+        "message": result.get("message") or "Sample workspace loaded",
         "company": result.get("company", "watch"),
         "import_ids": result.get("import_ids"),
     }
@@ -93,13 +93,13 @@ async def run_startup_demo_bootstrap() -> None:
         if _bootstrap_state["status"] == "running":
             return
         _bootstrap_state["status"] = "running"
-        _bootstrap_state["message"] = "Loading ChronoHaus Watch Co. demo datasets…"
+        _bootstrap_state["message"] = "Loading ChronoHaus Watch Co. sample datasets…"
 
     try:
         async with async_session_factory() as session:
             if await watch_workspace_ready(session):
                 _bootstrap_state["status"] = "ready"
-                _bootstrap_state["message"] = "Watch demo workspace already loaded"
+                _bootstrap_state["message"] = "Sample workspace already loaded"
                 _bootstrap_state["company"] = "watch"
                 return
             result = await bootstrap_watch_if_needed(session)

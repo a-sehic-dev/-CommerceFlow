@@ -54,13 +54,18 @@ def log_import_complete(
 
 
 def log_import_failed(import_id: int, error: BaseException) -> None:
-    logger.error("import_failed id=%s error=%s: %s", import_id, type(error).__name__, error)
-    logger.debug(traceback.format_exc())
+    logger.error(
+        "import_failed id=%s error=%s: %s\n%s",
+        import_id,
+        type(error).__name__,
+        error,
+        traceback.format_exc(),
+    )
 
 
 def log_import_stage(import_id: int, stage: str, **kwargs: Any) -> None:
     extra = " | ".join(f"{k}={v}" for k, v in kwargs.items()) if kwargs else ""
-    logger.info("import_stage id=%s [%s] %s%s", import_id, stage, stage, f" | {extra}" if extra else "")
+    logger.info("import_stage id=%s stage=%s%s", import_id, stage, f" | {extra}" if extra else "")
 
 
 def log_dataset_classification(

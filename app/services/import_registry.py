@@ -19,6 +19,11 @@ async def has_active_imports() -> bool:
         return bool(_active_ids)
 
 
+async def get_active_import_ids() -> set[int]:
+    async with _lock:
+        return set(_active_ids)
+
+
 async def is_filename_busy(filename: str) -> bool:
     key = normalize_filename(filename)
     async with _lock:

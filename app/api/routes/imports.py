@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -32,6 +33,7 @@ from app.utils.dataset_display import (
 from app.utils.file_types import is_supported_upload
 
 router = APIRouter(prefix="/api/imports", tags=["imports"])
+logger = logging.getLogger("commerceflow.import")
 
 
 def _detection_reason(record: ImportRecord) -> str | None:
@@ -109,12 +111,41 @@ async def upload_file(
 
     dest = settings.upload_dir / file.filename
     dest.write_bytes(content)
+    logger.info(
+        "upload_received filename=%s bytes=%s source=%s dataset_type=%s",
+        file.filename,
+        len(content),
+        source_type,
+        dataset_type,
+    )
 
     service = ImportService(db)
     record = await service.create_import(file.filename, source_type, dataset_type=dataset_type)
     await db.flush()
+    await db.commit()
+    logger.info("upload_committed id=%s path=%s", record.id, dest)
 
-    import_runner.schedule(record.id, dest, source_type)
+    forced = dataset_type if dataset_type not in ("auto", "") else None
+    try:
+        await import_runner.run_import(
+            record.id,
+            dest,
+            source_type,
+            forced_type=forced,
+        )
+    except Exception as exc:
+        logger.exception("upload_process_crashed id=%s", record.id)
+        raise HTTPException(500, f"Import processing failed: {exc}") from exc
+
+    record = await service.get_import(record.id)
+    if not record:
+        raise HTTPException(500, "Import record missing after processing")
+    logger.info(
+        "upload_finished id=%s status=%s success=%s",
+        record.id,
+        record.status,
+        record.success_count,
+    )
     return _import_response(record)
 
 
@@ -204,5 +235,13 @@ async def confirm_dataset_type(
     )
     record.status = ST.IMPORTING
     await db.flush()
-    import_runner.schedule(import_id, dest, record.source_type, forced_type=body.dataset_type)
+    await db.commit()
+    logger.info("confirm_type_committed id=%s type=%s", import_id, body.dataset_type)
+    await import_runner.run_import(
+        import_id,
+        dest,
+        record.source_type,
+        forced_type=body.dataset_type,
+    )
+    record = await service.get_import(import_id)
     return _import_response(record)

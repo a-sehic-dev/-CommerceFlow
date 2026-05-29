@@ -188,7 +188,7 @@ class DemoLoaderService:
 
         return {
             "success": True,
-            "message": "Watch demo is loaded — click Run Your Analysis to view KPIs and charts.",
+            "message": "Sample workspace is loaded — click Run Your Analysis to view KPIs and charts.",
             "company": key,
             "import_ids": import_ids,
             "available_workspaces": sorted(all_imports.keys()),

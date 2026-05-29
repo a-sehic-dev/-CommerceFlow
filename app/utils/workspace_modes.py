@@ -1,8 +1,8 @@
-"""Workspace mode labels for demo vs authenticated SaaS experiences."""
+"""Workspace mode labels for guest sample vs authenticated SaaS experiences."""
 
 WORKSPACE_MODES: dict[str, dict[str, str]] = {
     "demo_workspace": {
-        "title": "Demo Workspace",
+        "title": "Sample Workspace",
         "subtitle": "Explore operational analytics instantly",
         "alt_subtitle": "Access sample ecommerce datasets without signup",
     },

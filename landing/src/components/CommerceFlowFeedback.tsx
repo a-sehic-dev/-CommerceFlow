@@ -138,7 +138,7 @@ export function CommerceFlowFeedback() {
                     How is CommerceFlow for you?
                   </h2>
                   <p className="mt-1 text-sm text-slate-400">
-                    Optional — demo, landing, or product experience. No analysis required.
+                    Optional — app, landing, or product experience. No analysis required.
                   </p>
                 </div>
                 <button
