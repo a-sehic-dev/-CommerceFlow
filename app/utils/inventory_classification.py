@@ -66,7 +66,10 @@ def sales_velocity_by_sku(
 
     work = sales_df.copy()
     work["sku"] = work["sku"].astype(str)
-    qty = pd.to_numeric(work.get("quantity", 0), errors="coerce").fillna(0)
+    if "quantity" in work.columns:
+        qty = pd.to_numeric(work["quantity"], errors="coerce").fillna(0)
+    else:
+        qty = pd.Series(1.0, index=work.index)
     work["_qty"] = qty
 
     if "sold_at" in work.columns:

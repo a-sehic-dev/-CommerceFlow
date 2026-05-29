@@ -189,10 +189,13 @@ class ProfitLeakageEngine:
         results = []
         if "compare_at_price" not in df.columns or "price" not in df.columns:
             return results
+        compare = pd.to_numeric(df["compare_at_price"], errors="coerce")
+        price = pd.to_numeric(df["price"], errors="coerce")
         inconsistent = df[
-            (df["compare_at_price"].notna())
-            & (df["compare_at_price"] > 0)
-            & (df["price"] >= df["compare_at_price"])
+            compare.notna()
+            & (compare > 0)
+            & price.notna()
+            & (price >= compare)
         ]
         for _, row in inconsistent.iterrows():
             results.append({
