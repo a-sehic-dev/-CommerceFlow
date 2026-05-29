@@ -1138,6 +1138,34 @@
   background: rgba(99, 102, 241, 0.04);
   transform: scale(1.005);
 }
+.dropzone-compact {
+  padding: 2rem 1.5rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+.import-upload-controls {
+  text-align: center;
+  padding: 0 0.5rem 0.5rem;
+}
+.import-upload-controls .input-select {
+  cursor: pointer;
+}
+.import-browse-label {
+  display: inline-block;
+  cursor: pointer;
+  margin: 0 auto;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* ─── Badges ─── */
 .badge {

@@ -12,33 +12,32 @@
         <p class="card-subtitle">Drag & drop or browse files</p>
       </div>
     </div>
-    <div id="dropzone" class="dropzone">
+    <input type="file" id="file-input" class="sr-only" accept=".csv,.xlsx,.xls" aria-hidden="true">
+    <div id="dropzone" class="dropzone dropzone-compact">
       <svg class="w-12 h-12 mx-auto mb-4 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
       </svg>
       <p class="font-medium text-white mb-1">Drop your file here</p>
-      <p class="text-sm text-slate-500 mb-4">CSV or XLSX — one file per type (sales, products, inventory)</p>
-      <p class="text-xs text-slate-500 mb-6 max-w-sm mx-auto">
+      <p class="text-sm text-slate-500">CSV or XLSX — one file per upload</p>
+    </div>
+    <div class="import-upload-controls">
+      <p class="text-xs text-slate-500 mb-3 text-center">
         <a href="#import-requirements" class="analysis-modal-link">Column requirements</a>
-        · <a href="/guide" class="analysis-modal-link">Full workspace guide</a>
+        · <a href="/guide" class="analysis-modal-link">Workspace guide</a>
       </p>
-      <input type="file" id="file-input" class="hidden" accept=".csv,.xlsx,.xls">
       <select id="source-type" class="input-select mb-3 mx-auto block max-w-xs">
         <option value="generic">Generic CSV</option>
         <option value="shopify">Shopify Export</option>
         <option value="woocommerce">WooCommerce Export</option>
       </select>
-      <p class="text-xs text-slate-500 mb-4 max-w-xs mx-auto">Type is detected from column headers. Override below if needed.</p>
-      <select id="dataset-type" class="input-select mb-3 mx-auto block max-w-xs" aria-label="Dataset type override">
+      <p class="text-xs text-slate-500 mb-3 max-w-xs mx-auto text-center">Match your export source. Pick dataset type if auto-detect is unsure.</p>
+      <select id="dataset-type" class="input-select mb-4 mx-auto block max-w-xs" aria-label="Dataset type">
         <option value="auto" selected>Auto-detect from columns</option>
         <option value="sales">Sales</option>
         <option value="products">Products</option>
         <option value="inventory">Inventory</option>
       </select>
-      <p class="text-xs text-amber-200/90 mb-4 max-w-sm mx-auto">
-        For <strong>auto_*.xlsx</strong> test files: pick <strong>Products</strong>, then <strong>Inventory</strong>, then <strong>Sales</strong> before Browse — not Auto-detect.
-      </p>
-      <button type="button" onclick="document.getElementById('file-input').click()" class="btn-primary">Browse Files</button>
+      <label id="btn-browse-files" for="file-input" class="btn-primary import-browse-label">Browse Files</label>
     </div>
     <div id="upload-status" class="mt-4 hidden"></div>
     <div class="import-reset-actions mt-6 pt-4 border-t border-white/5">

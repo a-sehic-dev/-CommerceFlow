@@ -1243,33 +1243,53 @@ const CF = {
     CF.loadAlerts();
   },
 
+  openFilePicker() {
+    const input = document.getElementById('file-input');
+    if (!input) return;
+    if (CF.importBusy) {
+      const status = document.getElementById('upload-status');
+      if (status) {
+        status.classList.remove('hidden');
+        status.innerHTML = '<div class="toast toast-warning">Import in progress — wait or cancel it in Import History.</div>';
+      }
+      CF.toast('Import already running — cancel stuck row in history if needed', 'warning', 7000);
+      return;
+    }
+    input.value = '';
+    input.click();
+  },
+
   initImports() {
     const dropzone = document.getElementById('dropzone');
     const input = document.getElementById('file-input');
-    if (!dropzone || !input) return;
+    if (!input) return;
 
-    dropzone.addEventListener('click', (e) => {
-      if (e.target.tagName !== 'SELECT' && e.target.tagName !== 'BUTTON') input.click();
+    dropzone?.addEventListener('click', (e) => {
+      if (e.target.closest('a')) return;
+      CF.openFilePicker();
     });
-    dropzone.addEventListener('dragover', (e) => {
+    dropzone?.addEventListener('dragover', (e) => {
       e.preventDefault();
       dropzone.classList.add('dragover');
     });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-    dropzone.addEventListener('drop', (e) => {
+    dropzone?.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone?.addEventListener('drop', (e) => {
       e.preventDefault();
       dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files.length) CF.uploadFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer?.files?.[0];
+      if (file) CF.uploadFile(file);
     });
     input.addEventListener('change', () => {
-      if (input.files.length) CF.uploadFile(input.files[0]);
+      const file = input.files?.[0];
+      if (file) CF.uploadFile(file);
     });
     CF.loadImportHistory();
   },
 
   async uploadFile(file) {
+    if (!file?.name) return;
     if (CF.importBusy) {
-      CF.toast('An import is already running', 'warning');
+      CF.toast('An import is already running — use Cancel stuck import in history', 'warning', 7000);
       return;
     }
     const form = new FormData();
@@ -1277,22 +1297,26 @@ const CF = {
     form.append('source_type', document.getElementById('source-type')?.value || 'generic');
     form.append('dataset_type', document.getElementById('dataset-type')?.value || 'auto');
     const status = document.getElementById('upload-status');
+    const input = document.getElementById('file-input');
     if (status) {
       status.classList.remove('hidden');
-      status.innerHTML = '<div class="import-progress-banner">Uploading file…</div>';
+      status.innerHTML = `<div class="import-progress-banner">Uploading ${file.name}…</div>`;
     }
     CF.importBusy = true;
     try {
       const r = await CF.fetchJSON('/api/imports/upload', { method: 'POST', body: form });
+      CF.trackImport(r.id);
       const final = await CF.waitForImport(r.id, {
         onTick: (tick) => CF.updateUploadStatusBanner(tick),
       });
       CF.presentImportOutcome(final, status);
     } catch (e) {
-      if (status) status.innerHTML = '<div class="toast toast-error">Upload failed</div>';
-      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Upload failed', 'error');
+      const msg = CF.parseApiError(e).split('\n')[0] || 'Upload failed';
+      if (status) status.innerHTML = `<div class="toast toast-error">${msg}</div>`;
+      CF.toast(msg, 'error', 8000);
       await CF.loadImportHistory();
     } finally {
+      if (input) input.value = '';
       CF.updateImportBusyState();
     }
   },

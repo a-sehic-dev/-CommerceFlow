@@ -34,6 +34,9 @@ async def lifespan(app: FastAPI):
         if recovered:
             log_early = logging.getLogger("commerceflow")
             log_early.info("Recovered %s stale import(s) on startup", recovered)
+    from app.services.import_registry import release_all_imports
+
+    await release_all_imports()
     from app.utils.cache import analytics_cache
 
     analytics_cache.invalidate()

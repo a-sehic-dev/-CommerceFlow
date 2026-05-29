@@ -34,6 +34,13 @@ async def release_import(import_id: int, filename: str | None = None) -> None:
             _active_filenames.discard(key)
 
 
+async def release_all_imports() -> None:
+    """Clear orphaned in-memory locks after worker restart (DB may show no active import)."""
+    async with _lock:
+        _active_ids.clear()
+        _active_filenames.clear()
+
+
 @asynccontextmanager
 async def claim_import(import_id: int, filename: str):
     key = normalize_filename(filename)

@@ -13,7 +13,12 @@ from app.schemas.datasets import ImportCatalogResponse
 from app.constants import import_status as ST
 from app.services.dataset_catalog_service import DatasetCatalogService
 from app.services.import_progress import has_imports_in_progress
-from app.services.import_registry import has_active_imports, is_filename_busy, release_import
+from app.services.import_registry import (
+    has_active_imports,
+    is_filename_busy,
+    release_all_imports,
+    release_import,
+)
 from app.services.import_runner import import_runner
 from app.services.import_service import ImportService
 from app.services.import_stale_recovery import recover_stale_imports
@@ -89,6 +94,11 @@ async def upload_file(
         raise HTTPException(400, f"File exceeds {settings.max_upload_size_mb}MB limit")
 
     await recover_stale_imports(db)
+    in_progress = await db.execute(
+        select(ImportRecord.id).where(ImportRecord.status.in_(tuple(ST.IN_PROGRESS))).limit(1)
+    )
+    if not in_progress.scalar_one_or_none() and await has_active_imports():
+        await release_all_imports()
     if await has_active_imports():
         raise HTTPException(
             409,
