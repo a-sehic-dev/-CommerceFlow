@@ -25,6 +25,7 @@ async def track_usage(body: UsageTrackRequest, db: AsyncSession = Depends(get_db
         session_id=body.session_id,
         meta=body.meta,
     )
+    await db.commit()
     return {"ok": True}
 
 

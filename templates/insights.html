@@ -6,6 +6,7 @@
 {% block content %}
 <section class="insights-panel" id="insights-panel">
   <p class="insights-loading" id="insights-loading">Loading…</p>
+  <div class="insights-card insights-health hidden" id="insights-health"></div>
   <div id="insights-content" class="hidden">
     <h2 class="insights-section-title">Visitor activity (30 days)</h2>
     <div class="insights-funnel" id="insights-funnel"></div>
@@ -56,9 +57,22 @@
       .then((r) => r.json().then((data) => ({ ok: r.ok, data }))),
     fetch(`/api/admin/feedback?key=${encodeURIComponent(key)}&limit=100`, { headers })
       .then((r) => r.json().then((data) => ({ ok: r.ok, data }))),
+    fetch(`/api/admin/analytics-health?key=${encodeURIComponent(key)}`, { headers })
+      .then((r) => r.json().then((data) => ({ ok: r.ok, data }))),
   ])
-    .then(([usage, feedback]) => {
+    .then(([usage, feedback, health]) => {
       loading.classList.add('hidden');
+      const healthEl = document.getElementById('insights-health');
+      if (health.ok && healthEl) {
+        const h = health.data;
+        healthEl.classList.remove('hidden');
+        healthEl.innerHTML = `
+          <h3>Server check</h3>
+          <p class="insights-hint">Test guests on <strong>${location.host}</strong> (same hostname). Incognito on the same PC is fine.</p>
+          <p class="insights-hint">DB events (all): <strong>${h.usage_events_total}</strong> · Feedback rows: <strong>${h.feedback_entries_total}</strong></p>
+          <p class="insights-hint">Last event: ${h.last_usage_event_at || '—'} · Last feedback: ${h.last_feedback_at || '—'}</p>
+          <p class="insights-hint">${h.hint || ''}</p>`;
+      }
       if (!usage.ok) {
         errEl.classList.remove('hidden');
         errEl.textContent = usage.data.detail || 'Could not load activity.';

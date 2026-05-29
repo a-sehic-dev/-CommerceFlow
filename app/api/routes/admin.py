@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.models.feedback import FeedbackEntry
+from app.models.usage_event import UsageEvent
 from app.utils.founder_access import verify_founder_key
 from app.services.demo_bootstrap import bootstrap_atlas_if_needed, get_bootstrap_state
 from app.services.demo_loader_service import DemoLoaderService, get_demo_companies
@@ -15,6 +17,32 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 @router.get("/platform-status")
 async def platform_status(db: AsyncSession = Depends(get_db)):
     return await ResetService(db).platform_status()
+
+
+@router.get("/analytics-health")
+async def analytics_health(
+    key: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Raw DB counts (incl. /admin) — debug empty founder dashboard."""
+    verify_founder_key(key)
+    settings = get_settings()
+    usage_total = int(
+        await db.scalar(select(func.count()).select_from(UsageEvent)) or 0
+    )
+    feedback_total = int(
+        await db.scalar(select(func.count()).select_from(FeedbackEntry)) or 0
+    )
+    last_usage = await db.scalar(select(func.max(UsageEvent.created_at)))
+    last_feedback = await db.scalar(select(func.max(FeedbackEntry.created_at)))
+    return {
+        "database_url": settings.database_url,
+        "usage_events_total": usage_total,
+        "feedback_entries_total": feedback_total,
+        "last_usage_event_at": last_usage.isoformat() if last_usage else None,
+        "last_feedback_at": last_feedback.isoformat() if last_feedback else None,
+        "hint": "Compare demo URL hostname with this Render service. Redeploy clears SQLite without persistent disk.",
+    }
 
 
 @router.get("/feedback")

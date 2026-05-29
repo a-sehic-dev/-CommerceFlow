@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, not_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.usage_event import UsageEvent
@@ -38,7 +38,11 @@ class UsageTrackingService:
 
     @classmethod
     def _public_event_filter(cls):
-        return not_(UsageEvent.path.like(f"{_EXCLUDED_PATH_PREFIX}%"))
+        return or_(
+            UsageEvent.path.is_(None),
+            UsageEvent.path == "",
+            ~UsageEvent.path.like(f"{_EXCLUDED_PATH_PREFIX}%"),
+        )
 
     async def record(
         self,
