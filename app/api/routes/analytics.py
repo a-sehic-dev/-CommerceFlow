@@ -144,6 +144,15 @@ async def run_analysis(body: AnalysisRunRequest, db: AsyncSession = Depends(get_
     except Exception as exc:
         logger.exception("Analysis pipeline crashed")
         await db.rollback()
+        try:
+            await UsageTrackingService(db).record(
+                event_type="run_analysis_fail",
+                path="/dashboard",
+                meta={"message": str(exc)[:200]},
+            )
+            await db.commit()
+        except Exception:
+            pass
         return _error_response(exc)
 
 

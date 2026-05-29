@@ -58,7 +58,7 @@ const CF = {
     CF.syncImportsOnLoad();
     CF.initFeedbackExperience();
     if (!CF.isFounderAdminPage()) {
-      CF.trackUsage('page_view');
+      /* page_view recorded server-side (usage_page_middleware) — avoid double counts */
       CF.afterDemoReadyPageLoad();
       void CF.ensureGuestDemoReady();
     }
@@ -837,13 +837,12 @@ const CF = {
       clearInterval(stageTimer);
       CF.showAnalysisStages(pipeline.stages);
       if (!pipeline.success) {
-        CF.trackUsage('run_analysis_fail', { message: pipeline.message || 'failed' });
         const err = new Error(pipeline.message || 'Analysis failed');
         err.payload = pipeline;
         CF.showAnalysisError(err);
         return;
       }
-      CF.trackUsage('run_analysis_success');
+      /* run_analysis_success recorded server-side in POST /api/analytics/run */
       CF.toast(pipeline.message || 'Analysis complete', 'success');
       if (pipeline.post_actions?.length) {
         pipeline.post_actions.forEach((a) => CF.toast(a, 'info', 5000));
@@ -862,7 +861,6 @@ const CF = {
       else if (path === '/profit') CF.loadProfit();
     } catch (e) {
       clearInterval(stageTimer);
-      CF.trackUsage('run_analysis_fail', { message: CF.parseApiError(e).split('\n')[0] });
       CF.showAnalysisError(e);
     } finally {
       if (btn) btn.disabled = false;

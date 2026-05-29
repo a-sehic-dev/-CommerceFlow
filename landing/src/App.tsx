@@ -10,17 +10,11 @@ import { Founder } from "./components/Founder";
 import { Contact } from "./components/Contact";
 import { Faq } from "./components/Faq";
 import { FinalCta } from "./components/FinalCta";
-import { useEffect } from "react";
 import { DemoLaunchProvider } from "./context/DemoLaunchContext";
 import { CommerceFlowAssistant } from "./components/CommerceFlowAssistant";
 import { CommerceFlowFeedback } from "./components/CommerceFlowFeedback";
-import { trackUsage } from "./utils/trackUsage";
 
 export default function App() {
-  useEffect(() => {
-    trackUsage("landing_view", "/");
-  }, []);
-
   return (
     <DemoLaunchProvider>
       <Background />
