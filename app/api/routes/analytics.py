@@ -15,6 +15,7 @@ from app.services.empty_analysis import EMPTY_MODULE_PAYLOADS
 from app.services.dataset_catalog_service import DatasetCatalogService
 from app.services.analytics_orchestrator import AnalysisPipelineError, AnalyticsOrchestrator
 from app.services.business_insights import BusinessInsightsService
+from app.services.usage_tracking_service import UsageTrackingService
 from app.utils.cache import analytics_cache
 from app.utils.json_safe import sanitize_for_json
 
@@ -129,6 +130,15 @@ async def run_analysis(body: AnalysisRunRequest, db: AsyncSession = Depends(get_
             selection=selection,
             options=options,
         )
+        tracker = UsageTrackingService(db)
+        if pipeline.get("success"):
+            await tracker.record(event_type="run_analysis_success", path="/dashboard")
+        else:
+            await tracker.record(
+                event_type="run_analysis_fail",
+                path="/dashboard",
+                meta={"message": (pipeline.get("message") or "failed")[:200]},
+            )
         status = 200 if pipeline.get("success") else 422
         return JSONResponse(status_code=status, content=sanitize_for_json(pipeline))
     except Exception as exc:

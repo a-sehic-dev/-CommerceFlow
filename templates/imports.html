@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Import History{% endblock %}
 {% block page_title %}Data Import{% endblock %}
-{% block page_subtitle %}Upload and manage your business datasets{% endblock %}
+{% block page_subtitle %}Upload three datasets with matching SKUs — see requirements below before you import{% endblock %}
 
 {% block content %}
 <div class="grid-2">
@@ -17,7 +17,11 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
       </svg>
       <p class="font-medium text-white mb-1">Drop your file here</p>
-      <p class="text-sm text-slate-500 mb-6">CSV or XLSX — Sales, Products, or Inventory</p>
+      <p class="text-sm text-slate-500 mb-4">CSV or XLSX — one file per type (sales, products, inventory)</p>
+      <p class="text-xs text-slate-500 mb-6 max-w-sm mx-auto">
+        <a href="#import-requirements" class="analysis-modal-link">Column requirements</a>
+        · <a href="/guide" class="analysis-modal-link">Full workspace guide</a>
+      </p>
       <input type="file" id="file-input" class="hidden" accept=".csv,.xlsx,.xls">
       <select id="source-type" class="input-select mb-3 mx-auto block max-w-xs">
         <option value="generic">Generic CSV</option>
@@ -59,6 +63,79 @@
     <div id="import-history" class="import-history-list"></div>
   </div>
 </div>
+
+<section id="import-requirements" class="import-requirements">
+  <div class="import-requirements-head">
+    <div>
+      <p class="guide-eyebrow">Before you upload</p>
+      <h2 class="import-requirements-title">What to import for accurate analytics</h2>
+      <p class="import-requirements-lead">
+        CommerceFlow calculates KPIs from <strong>your</strong> rows — not demo numbers. Missing columns or mismatched SKUs
+        produce weak or misleading results. Upload all three files, then run analysis.
+      </p>
+    </div>
+    <a href="/guide" class="btn-secondary">Open workspace guide</a>
+  </div>
+
+  <div class="import-req-grid">
+    <article class="import-req-card import-req-card-required">
+      <h3>Sales <span class="import-req-badge">Required columns</span></h3>
+      <ul class="import-req-list">
+        <li><strong>sku</strong> — same code as in products &amp; inventory</li>
+        <li><strong>revenue</strong> — line revenue (or unit_price × quantity)</li>
+        <li><strong>quantity</strong> — units sold per row</li>
+        <li><strong>sold_at</strong> — order / sale date (for trends &amp; dead-stock rules)</li>
+      </ul>
+      <p class="import-req-optional">Helpful: order_id, discount_amount, sales_channel, region</p>
+    </article>
+
+    <article class="import-req-card import-req-card-required">
+      <h3>Products <span class="import-req-badge">Required columns</span></h3>
+      <ul class="import-req-list">
+        <li><strong>sku</strong> — unique product code</li>
+        <li><strong>title</strong> — product name (name / product_name also work)</li>
+      </ul>
+      <p class="import-req-optional">Strongly recommended: <strong>price</strong>, <strong>cost</strong> (or margin_pct), <strong>category</strong></p>
+    </article>
+
+    <article class="import-req-card import-req-card-required">
+      <h3>Inventory <span class="import-req-badge">Required columns</span></h3>
+      <ul class="import-req-list">
+        <li><strong>sku</strong> — matches sales &amp; products</li>
+        <li><strong>on_hand</strong> — stock on hand (quantity_on_hand / stock also work)</li>
+      </ul>
+      <p class="import-req-optional">Helpful: warehouse, reserved, days_in_stock, inbound</p>
+    </article>
+  </div>
+
+  <div class="import-req-warnings">
+    <h3>Common mistakes (bad file → bad dashboard)</h3>
+    <ul>
+      <li>Different SKU formats across files (e.g. <code>SKU-1</code> vs <code>sku_1</code>)</li>
+      <li>Sales without dates — velocity, dead inventory, and trends will be wrong</li>
+      <li>Products without cost/price — margin and profit leakage stay empty or weak</li>
+      <li>Only one file uploaded — analysis needs <strong>all three</strong> types selected</li>
+      <li>Duplicate SKUs in products — keep one row per SKU</li>
+    </ul>
+  </div>
+</section>
+
+<section class="guide-support-card import-review-card">
+  <div>
+    <p class="guide-eyebrow">Pilot / onboarding</p>
+    <h3>Send your files — we map columns before you run analysis</h3>
+    <p>
+      Not sure your export is ready? Email <strong>products</strong>, <strong>sales</strong>, and <strong>inventory</strong>
+      (full files or a redacted sample). We check headers, SKU alignment, and dataset types, then tell you when to
+      upload and run <strong>Run Your Analysis</strong> in the app.
+    </p>
+    <p class="import-review-note">Attachments via email only — do not paste sensitive data in the feedback widget.</p>
+  </div>
+  <a
+    class="btn-primary guide-support-btn"
+    href="mailto:{{ support_email }}?subject=CommerceFlow%20data%20review%20request&amp;body=Hi%20CommerceFlow%20team%2C%0A%0AI%20would%20like%20a%20review%20of%20my%20datasets%20before%20running%20analysis.%0A%0ACompany%20%2F%20store%3A%20%0AERP%20%2F%20export%20source%20%28Shopify%2C%20WooCommerce%2C%20Excel%2C%20etc.%29%3A%20%0A%0AI%20will%20attach%3A%0A-%20products%20file%0A-%20sales%20file%0A-%20inventory%20file%0A%0AQuestions%20%2F%20notes%3A%20%0A%0AThanks%2C%0A"
+  >Email {{ support_email }}</a>
+</section>
 
 <div id="type-confirm-modal" class="analysis-modal" style="display:none" aria-hidden="true">
   <div class="analysis-modal-backdrop" onclick="CF.closeTypeConfirmModal()"></div>

@@ -66,18 +66,24 @@
       if (health.ok && healthEl) {
         const h = health.data;
         healthEl.classList.remove('hidden');
+        const empty = (h.usage_events_total || 0) === 0 && (h.feedback_entries_total || 0) === 0;
         healthEl.innerHTML = `
-          <h3>Server check</h3>
-          <p class="insights-hint">Test guests on <strong>${location.host}</strong> (same hostname). Incognito on the same PC is fine.</p>
+          <h3>Server check — ${h.service_host || location.host}</h3>
+          <p class="insights-hint">Guests must use <strong>https://${h.service_host || location.host}/</strong> — not a different Render URL.</p>
           <p class="insights-hint">DB events (all): <strong>${h.usage_events_total}</strong> · Feedback rows: <strong>${h.feedback_entries_total}</strong></p>
           <p class="insights-hint">Last event: ${h.last_usage_event_at || '—'} · Last feedback: ${h.last_feedback_at || '—'}</p>
+          ${empty ? '<p class="insights-alert">All zeros? You are on the right host but no events yet — open the demo in incognito on <strong>this</strong> URL, submit feedback, then refresh admin. Or USAGE_STATS_KEY differs on another Render service.</p>' : ''}
           <p class="insights-hint">${h.hint || ''}</p>`;
+      } else if (!health.ok && healthEl) {
+        healthEl.classList.remove('hidden');
+        healthEl.innerHTML = `<p class="insights-alert">${health.data.detail || 'Invalid admin key on this Render service. Set USAGE_STATS_KEY in Environment to match ?key= in the URL.'}</p>`;
       }
       if (!usage.ok) {
         errEl.classList.remove('hidden');
         errEl.textContent = usage.data.detail || 'Could not load activity.';
-        return;
+        if (!health.ok) return;
       }
+      if (!usage.ok) return;
       content.classList.remove('hidden');
       const data = usage.data;
       const f = data.funnel || {};

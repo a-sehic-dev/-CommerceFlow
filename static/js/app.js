@@ -141,12 +141,19 @@ const CF = {
     return lines.filter(Boolean).join('\n') || err.message || 'Unknown error';
   },
 
+  getCookie(name) {
+    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : null;
+  },
+
   sessionId() {
     const key = 'cf_guest_session';
-    let existing = localStorage.getItem(key);
-    if (existing) return existing;
-    existing = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    let existing = localStorage.getItem(key) || CF.getCookie(key);
+    if (!existing) {
+      existing = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
     localStorage.setItem(key, existing);
+    document.cookie = `${key}=${encodeURIComponent(existing)};path=/;max-age=31536000;SameSite=Lax`;
     return existing;
   },
 

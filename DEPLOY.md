@@ -7,8 +7,10 @@ Lokalno (`127.0.0.1`) **samo ti vidiš**. Za LinkedIn treba **javni HTTPS URL**.
 **Settings → Environment (obavezno):**
 - `PYTHON_VERSION` = `3.11.9`
 - `SECRET_KEY` = Generate
-- `USAGE_STATS_KEY` = tvoja šifra
+- `USAGE_STATS_KEY` = tvoja šifra (npr. `cf-insights-sedin-2026`) — **isti na svakom Render servisu**
 - `OPENAI_API_KEY` = tvoj ključ (opcionalno)
+
+**Jedan javni URL:** Ako imaš više Render servisa (`commerceflow-1`, `commerceflow-svfv`), svaki ima **svoju SQLite bazu**. Demo + admin moraju biti **isti hostname**, npr. samo `https://commerceflow-svfv.onrender.com`.
 
 **Build Command:**
 ```

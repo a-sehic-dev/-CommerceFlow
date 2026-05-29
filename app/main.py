@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import admin, alerts, analytics, assistant, exports, feedback, imports, pages, usage
 from app.config import ensure_directories, get_settings
+from app.middleware import usage_page_middleware
 from app.database import init_db
 from app.utils.app_timezone import as_local_iso
 from app.utils.json_safe import sanitize_for_json
@@ -70,6 +71,7 @@ def create_app() -> FastAPI:
     )
 
     app.mount("/static", StaticFiles(directory="static"), name="static")
+    app.middleware("http")(usage_page_middleware)
 
     app.include_router(pages.router)
     app.include_router(admin.router)

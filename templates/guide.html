@@ -20,15 +20,35 @@
 </section>
 
 <section class="guide-grid">
-  <article class="guide-card">
+  <article class="guide-card guide-card-wide">
     <span class="guide-step">01</span>
     <h3>Importing datasets</h3>
-    <p>Upload three operational files: sales, products, and inventory. CommerceFlow classifies supported CSV/XLSX exports from column headers.</p>
-    <ul>
-      <li>Sales: orders, revenue, quantity, channel, sold date</li>
-      <li>Products: SKU, title, category, price, cost</li>
-      <li>Inventory: SKU, stock, reserved, aging, warehouse</li>
-    </ul>
+    <p>Upload three operational files on <a href="/imports" class="analysis-modal-link">Data Import</a>. CommerceFlow maps column headers automatically (Shopify / WooCommerce / generic CSV).</p>
+    <div class="guide-req-table-wrap">
+      <table class="guide-req-table">
+        <thead>
+          <tr><th>Dataset</th><th>Required</th><th>Recommended</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Sales</strong></td>
+            <td>sku, revenue, quantity, sold_at</td>
+            <td>order_id, discount_amount, channel</td>
+          </tr>
+          <tr>
+            <td><strong>Products</strong></td>
+            <td>sku, title</td>
+            <td>price, cost, category, brand</td>
+          </tr>
+          <tr>
+            <td><strong>Inventory</strong></td>
+            <td>sku, on_hand (or stock)</td>
+            <td>warehouse, reserved, days_in_stock</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="guide-card-note">Use the <strong>same SKU</strong> in all three files. Analysis is blocked if required columns are missing.</p>
   </article>
 
   <article class="guide-card guide-card-wide">
@@ -70,17 +90,19 @@
 
 <section class="guide-support-card">
   <div>
-    <p class="guide-eyebrow">Need help?</p>
-    <h3>Problems with imports or analysis?</h3>
+    <p class="guide-eyebrow">Pilot / onboarding</p>
+    <h3>Send files for review before you finish analysis</h3>
     <p>
-      Email your <strong>products</strong>, <strong>sales</strong>, and <strong>inventory</strong> files (or a small sample).
-      We will check column mapping and dataset setup so your analysis matches your real operations.
+      Email <strong>products</strong>, <strong>sales</strong>, and <strong>inventory</strong> (or anonymized samples).
+      We verify column mapping, SKU overlap, and dataset types — then you upload in the app and run
+      <strong>Run Your Analysis</strong> with confidence.
     </p>
+    <p class="guide-card-note">Use email for file attachments. The in-app Feedback button is for product feedback only.</p>
   </div>
   <a
     class="btn-primary guide-support-btn"
-    href="mailto:{{ support_email }}?subject=CommerceFlow%20data%20review%20request"
-  >{{ support_email }}</a>
+    href="mailto:{{ support_email }}?subject=CommerceFlow%20data%20review%20request&amp;body=Hi%20CommerceFlow%20team%2C%0A%0APlease%20review%20my%20datasets%20before%20analysis.%0A%0ACompany%3A%20%0ASource%20%28Shopify%2FExcel%2Fetc.%29%3A%20%0A%0AAttached%3A%20products%2C%20sales%2C%20inventory%0A%0AThanks%2C%0A"
+  >Email {{ support_email }}</a>
 </section>
 
 <section class="guide-demo-card">

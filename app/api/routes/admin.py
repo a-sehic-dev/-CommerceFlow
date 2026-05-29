@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,12 +21,14 @@ async def platform_status(db: AsyncSession = Depends(get_db)):
 
 @router.get("/analytics-health")
 async def analytics_health(
+    request: Request,
     key: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     """Raw DB counts (incl. /admin) — debug empty founder dashboard."""
     verify_founder_key(key)
     settings = get_settings()
+    host = request.headers.get("host") or ""
     usage_total = int(
         await db.scalar(select(func.count()).select_from(UsageEvent)) or 0
     )
@@ -36,12 +38,18 @@ async def analytics_health(
     last_usage = await db.scalar(select(func.max(UsageEvent.created_at)))
     last_feedback = await db.scalar(select(func.max(FeedbackEntry.created_at)))
     return {
+        "service_host": host,
         "database_url": settings.database_url,
         "usage_events_total": usage_total,
         "feedback_entries_total": feedback_total,
         "last_usage_event_at": last_usage.isoformat() if last_usage else None,
         "last_feedback_at": last_feedback.isoformat() if last_feedback else None,
-        "hint": "Compare demo URL hostname with this Render service. Redeploy clears SQLite without persistent disk.",
+        "hint": (
+            f"Guests and admin must use the same hostname (this service: {host}). "
+            "commerceflow-1 and commerceflow-svfv are separate databases. "
+            "Set the same USAGE_STATS_KEY on every Render service you use. "
+            "Redeploy clears SQLite without a persistent disk."
+        ),
     }
 
 

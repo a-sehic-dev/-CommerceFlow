@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.models.feedback import FeedbackEntry
+from app.services.usage_tracking_service import UsageTrackingService
 from app.utils.founder_email import send_founder_email
 
 logger = logging.getLogger("commerceflow.feedback")
@@ -65,6 +66,13 @@ async def create_feedback(body: FeedbackCreate, db: AsyncSession = Depends(get_d
     )
     db.add(entry)
     await db.flush()
+
+    await UsageTrackingService(db).record(
+        event_type="feedback_submit",
+        path="/",
+        session_id=body.session_id,
+        meta={"rating": body.rating},
+    )
 
     settings = get_settings()
     if body.email_optional or body.feedback_text:
