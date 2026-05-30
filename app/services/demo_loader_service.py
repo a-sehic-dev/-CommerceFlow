@@ -23,7 +23,7 @@ DEMO_DIR = ROOT / "data" / "demo_companies"
 
 DEMO_DATASET_TYPES = ("products", "inventory", "sales")
 # Guest / portfolio demo: ChronoHaus Watch Co. (medium-size, fast on Render).
-DEMO_WORKSPACE_KEYS = frozenset({"watch", "auto"})
+DEMO_WORKSPACE_KEYS = frozenset({"watch", "motor"})
 WATCH_DEMO_FILES = {
     "products": "watch_products.xlsx",
     "inventory": "watch_inventory.xlsx",
@@ -125,20 +125,25 @@ class DemoLoaderService:
             return None
         return record
 
-    async def ensure_all_demo_imports(self) -> dict[str, dict[str, int]]:
-        """Import every demo company pack into history without removing existing imports."""
-        import_ids: dict[str, dict[str, int]] = {}
-        for key, files in discover_demo_companies().items():
-            workspace_ids: dict[str, int] = {}
-            for dtype in DEMO_DATASET_TYPES:
-                filename = files.get(dtype)
-                if not filename:
-                    continue
-                record = await self._ensure_import(filename)
-                if record:
-                    workspace_ids[dtype] = record.id
-            if workspace_ids:
-                import_ids[key] = workspace_ids
+    async def import_workspace(self, key: str) -> dict[str, int]:
+        """Import only one sample pack (three files) into history."""
+        workspaces = discover_demo_companies()
+        files = workspaces.get(key)
+        if not files:
+            raise FileNotFoundError(f"Sample workspace '{key}' is not available on this server.")
+        import_ids: dict[str, int] = {}
+        for dtype in DEMO_DATASET_TYPES:
+            filename = files.get(dtype)
+            if not filename:
+                continue
+            record = await self._ensure_import(filename)
+            if record:
+                import_ids[dtype] = record.id
+        missing = [dtype for dtype in DEMO_DATASET_TYPES if dtype not in import_ids]
+        if missing:
+            raise FileNotFoundError(
+                f"Sample workspace '{key}' is incomplete (missing: {', '.join(missing)})."
+            )
         return import_ids
 
     def _resolve_workspace_key(self, company: str, workspaces: dict[str, dict[str, str]]) -> str:
@@ -148,9 +153,9 @@ class DemoLoaderService:
                 return "watch"
         if key == "atlas" and "watch" in workspaces:
             return "watch"
-        if key in ("auto", "car", "cars", "parts"):
-            if "auto" in workspaces:
-                return "auto"
+        if key in ("motor", "motorparts", "motor_parts", "auto", "car", "cars", "parts"):
+            if "motor" in workspaces:
+                return "motor"
         if key in workspaces:
             return key
         if not workspaces:
@@ -168,35 +173,22 @@ class DemoLoaderService:
         if fresh:
             await self.reset.reset_demo_environment()
 
-        all_imports = await self.ensure_all_demo_imports()
         key = self._resolve_workspace_key(company, workspaces)
-        import_ids = all_imports.get(key)
-        if not import_ids:
-            files = workspaces[key]
-            import_ids = {}
-            for dtype in DEMO_DATASET_TYPES:
-                record = await self._ensure_import(files[dtype])
-                if record:
-                    import_ids[dtype] = record.id
+        import_ids = await self.import_workspace(key)
 
-        missing_types = [dtype for dtype in DEMO_DATASET_TYPES if dtype not in import_ids]
-        if missing_types:
-            logger.warning("Sample workspace %s incomplete, missing: %s", key, ", ".join(missing_types))
-            raise FileNotFoundError("Sample workspace is temporarily unavailable.")
-
-        active = await ActiveDatasetService(self.session).set_active(
-            products_import_id=import_ids["products"],
-            sales_import_id=import_ids["sales"],
-            inventory_import_id=import_ids["inventory"],
-        )
+        # Do not pre-select datasets — visitor chooses in Run Your Analysis.
+        await ActiveDatasetService(self.session).set_active(None, None, None)
         analytics_cache.invalidate()
 
+        label = "Watches" if key == "watch" else "Motor parts" if key == "motor" else key
         return {
             "success": True,
-            "message": "Sample workspace is loaded — click Run Your Analysis to view KPIs and charts.",
+            "message": (
+                f"{label} sample files are in Import History. "
+                "Open Run Your Analysis, pick sales, products, and inventory, then run."
+            ),
             "company": key,
             "import_ids": import_ids,
-            "available_workspaces": sorted(all_imports.keys()),
-            "active_datasets": active.model_dump(),
+            "available_workspaces": sorted(workspaces.keys()),
             "requires_analysis_generation": True,
         }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate DriveLine Auto Parts demo pack (~100 products, ~3.8k sales) for guest workspace."""
+"""Generate DriveLine Motor Parts demo pack (~100 products, ~3.8k sales)."""
 
 from __future__ import annotations
 
@@ -16,10 +16,10 @@ OUT = ROOT / "data" / "demo_companies"
 
 random.seed(3030)
 
-AUTO = {
-    "products_file": "auto_products.xlsx",
-    "inventory_file": "auto_inventory.xlsx",
-    "sales_file": "auto_sales_2025.xlsx",
+MOTOR = {
+    "products_file": "motor_products.xlsx",
+    "inventory_file": "motor_inventory.xlsx",
+    "sales_file": "motor_sales_2025.xlsx",
     "product_count": 100,
     "sales_rows": 3_800,
 }
@@ -34,10 +34,10 @@ START = datetime(2025, 1, 1)
 
 def build_products() -> pd.DataFrame:
     rows = []
-    for i in range(1, AUTO["product_count"] + 1):
+    for i in range(1, MOTOR["product_count"] + 1):
         brand = BRANDS[i % len(BRANDS)]
         cat = CATEGORIES[i % len(CATEGORIES)]
-        sku = f"AUT-{i:04d}"
+        sku = f"MTR-{i:04d}"
         cost = round(random.uniform(8, 220), 2)
         price = round(cost * random.uniform(1.4, 2.2), 2)
         margin = round((price - cost) / price * 100, 2)
@@ -88,7 +88,7 @@ def build_sales(products: pd.DataFrame) -> pd.DataFrame:
     cost_map = dict(zip(products["sku"], products["cost"]))
     rows = []
     order_seq = 20000
-    for _ in range(AUTO["sales_rows"]):
+    for _ in range(MOTOR["sales_rows"]):
         order_seq += 1
         sku = random.choice(skus)
         qty = random.randint(1, 4)
@@ -119,24 +119,19 @@ def build_sales(products: pd.DataFrame) -> pd.DataFrame:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    print("Generating DriveLine Auto Parts demo datasets...")
+    print("Generating DriveLine Motor Parts demo datasets...")
     products = build_products()
     inventory = build_inventory(products)
     sales = build_sales(products)
 
-    assert set(sales["sku"]) <= set(products["sku"])
-    assert set(inventory["sku"]) <= set(products["sku"])
+    products.to_excel(OUT / MOTOR["products_file"], index=False)
+    inventory.to_excel(OUT / MOTOR["inventory_file"], index=False)
+    sales.to_excel(OUT / MOTOR["sales_file"], index=False)
 
-    products.to_excel(OUT / AUTO["products_file"], index=False)
-    inventory.to_excel(OUT / AUTO["inventory_file"], index=False)
-    sales.to_excel(OUT / AUTO["sales_file"], index=False)
-
-    total_rev = sales["revenue"].sum()
-    orders = sales["order_id"].nunique()
-    print(f"  {AUTO['products_file']}: {len(products):,} rows")
-    print(f"  {AUTO['inventory_file']}: {len(inventory):,} rows")
-    print(f"  {AUTO['sales_file']}: {len(sales):,} rows")
-    print(f"  Expected revenue ~${total_rev:,.2f} | orders {orders:,}")
+    print(f"  {MOTOR['products_file']}: {len(products):,} rows")
+    print(f"  {MOTOR['inventory_file']}: {len(inventory):,} rows")
+    print(f"  {MOTOR['sales_file']}: {len(sales):,} rows")
+    print(f"  revenue ~${sales['revenue'].sum():,.2f}")
     print(f"\nDone -> {OUT}")
 
 

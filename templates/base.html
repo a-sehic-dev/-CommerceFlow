@@ -210,7 +210,7 @@
       <div class="analysis-modal-header">
         <div>
           <h2 id="analysis-modal-title">Run Your Analysis</h2>
-          <p class="analysis-modal-sub">Choose one <strong>sales</strong>, <strong>products</strong>, and <strong>inventory</strong> import each (sample watches, sample auto parts, or your uploads). Same SKU across files. File names can be anything — type is detected from columns. <a href="/imports#import-requirements" class="analysis-modal-link">Column requirements</a> · <a href="/guide" class="analysis-modal-link">Guide</a></p>
+          <p class="analysis-modal-sub">For each row, click <strong>Browse Imported Datasets</strong> and pick one file. Same SKU across sales, products, and inventory. <a href="/imports#import-requirements" class="analysis-modal-link">Column requirements</a></p>
         </div>
         <button type="button" class="icon-btn" onclick="CF.closeAnalysisModal()" aria-label="Close">×</button>
       </div>
@@ -313,7 +313,7 @@
     <span>Feedback</span>
   </button>
 
-  <script src="/static/js/app.js"></script>
+  <script src="/static/js/app.js?v={{ product_version }}"></script>
   {% block scripts %}{% endblock %}
   <script>document.addEventListener('DOMContentLoaded', () => CF.init());</script>
 </body>

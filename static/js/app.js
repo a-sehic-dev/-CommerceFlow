@@ -435,24 +435,6 @@ const CF = {
     { key: 'inventory', label: 'Inventory Operations' },
   ],
 
-  prefillSelectionFromActive(active, catalog) {
-    if (!active || !catalog) return;
-    const map = { products: 'products', sales: 'sales', inventory: 'inventory' };
-    const allItems = catalog.all || [
-      ...(catalog.sales || []),
-      ...(catalog.products || []),
-      ...(catalog.inventory || []),
-    ];
-    for (const [key, listKey] of Object.entries(map)) {
-      const fromActive = active[key];
-      const importId = fromActive?.id ?? active[`${key}_import_id`];
-      if (!importId) continue;
-      let match = (catalog[listKey] || []).find((item) => item.id === importId);
-      if (!match) match = allItems.find((item) => item.id === importId);
-      if (match) CF.selection[key] = match;
-    }
-  },
-
   async resolveAnalysisSelection() {
     const missing = CF.requiredDatasetTypes().filter((key) => !CF.selection[key]);
     if (missing.length) return null;
@@ -476,9 +458,13 @@ const CF = {
 
     let catalog = { sales: [], products: [], inventory: [] };
     try {
+      try {
+        await CF.fetchJSON('/api/analytics/active-datasets/clear', { method: 'POST' });
+      } catch {
+        /* non-blocking */
+      }
       catalog = await CF.fetchJSON('/api/imports/catalog');
       CF.catalog = catalog;
-      /* Selection stays empty — client picks sales / products / inventory explicitly */
     } catch (e) {
       CF.toast('Could not load import history: ' + (CF.parseApiError(e).split('\n')[0] || 'error'), 'error');
       CF.catalog = catalog;
@@ -2160,11 +2146,12 @@ const CF = {
       await CF.loadActiveDatasetsBar();
       await CF.refreshPlatformUI();
       CF.trackUsage('load_demo', { company });
-      CF.toast(r.message || 'CommerceFlow workspace ready', 'success', 6000);
+      CF.selection = { sales: null, products: null, inventory: null };
+      CF.toast(r.message || 'Sample files imported', 'success', 8000);
       CF.showDemoWorkspaceBanner(company);
-      if (location.pathname !== '/dashboard') location.href = '/dashboard';
-      else await CF.loadDashboard();
-      CF.toast('Sample data is loaded. Click Run Your Analysis to view KPIs and charts.', 'info', 8000);
+      if (location.pathname === '/imports') CF.loadImportHistory();
+      else if (location.pathname !== '/dashboard') location.href = '/imports';
+      else await CF.loadActiveDatasetsBar();
     } catch (e) {
       CF.toast(CF.parseApiError(e).split('\n')[0] || 'Sample workspace load failed', 'error', 8000);
     }

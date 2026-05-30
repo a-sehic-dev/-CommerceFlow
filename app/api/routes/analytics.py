@@ -66,6 +66,13 @@ async def set_active_datasets(
     return await service.set_active(products_import_id, sales_import_id, inventory_import_id)
 
 
+@router.post("/active-datasets/clear")
+async def clear_active_datasets(db: AsyncSession = Depends(get_db)):
+    """Clear staged selection so Run Your Analysis starts empty."""
+    service = ActiveDatasetService(db)
+    return await service.set_active(None, None, None)
+
+
 @router.get("/dataset-info")
 async def dataset_info(db: AsyncSession = Depends(get_db)):
     orchestrator = AnalyticsOrchestrator(db)

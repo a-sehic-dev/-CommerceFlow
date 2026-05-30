@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     founder_url: str = "https://www.linkedin.com/in/sedin-sehic-1134253a8/"
     product_version: str = "1.0.0"
     workspace_mode: str = "demo_workspace"
-    auto_bootstrap_demo: bool = True
+    auto_bootstrap_demo: bool = False
     app_env: str = "development"
     debug: bool = True
     secret_key: str = "dev-secret-change-in-production"
