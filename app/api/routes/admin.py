@@ -162,7 +162,7 @@ async def load_demo_company(company: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "Evaluation workspace is temporarily unavailable.")
     try:
         service = DemoLoaderService(db)
-        result = await service.load_company(company, fresh=True)
+        result = await service.load_company(company, fresh=False)
         await db.commit()
         return result
     except FileNotFoundError as exc:

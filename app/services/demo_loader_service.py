@@ -23,7 +23,7 @@ DEMO_DIR = ROOT / "data" / "demo_companies"
 
 DEMO_DATASET_TYPES = ("products", "inventory", "sales")
 # Guest / portfolio demo: ChronoHaus Watch Co. (medium-size, fast on Render).
-DEMO_WORKSPACE_KEYS = frozenset({"watch", "motor"})
+DEMO_WORKSPACE_KEYS = frozenset({"watch", "motor", "home"})
 WATCH_DEMO_FILES = {
     "products": "watch_products.xlsx",
     "inventory": "watch_inventory.xlsx",
@@ -156,6 +156,9 @@ class DemoLoaderService:
         if key in ("motor", "motorparts", "motor_parts", "auto", "car", "cars", "parts"):
             if "motor" in workspaces:
                 return "motor"
+        if key in ("home", "appliances", "appliance", "bijela", "whitegoods", "white_goods"):
+            if "home" in workspaces:
+                return "home"
         if key in workspaces:
             return key
         if not workspaces:
@@ -163,7 +166,7 @@ class DemoLoaderService:
         logger.info("Requested evaluation workspace %s not found; using first available workspace", key)
         return sorted(workspaces)[0]
 
-    async def load_company(self, company: str, *, fresh: bool = True) -> dict:
+    async def load_company(self, company: str, *, fresh: bool = False) -> dict:
         workspaces = discover_demo_companies()
         if not workspaces:
             raise FileNotFoundError("Evaluation workspace is temporarily unavailable.")
@@ -180,7 +183,12 @@ class DemoLoaderService:
         await ActiveDatasetService(self.session).set_active(None, None, None)
         analytics_cache.invalidate()
 
-        label = "Watches" if key == "watch" else "Motor parts" if key == "motor" else key
+        labels = {
+            "watch": "Watches",
+            "motor": "Motor parts",
+            "home": "Home appliances",
+        }
+        label = labels.get(key, key)
         return {
             "success": True,
             "message": (

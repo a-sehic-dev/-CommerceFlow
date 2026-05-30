@@ -2068,50 +2068,35 @@ const CF = {
     const status = CF.platformStatus;
     if (!status?.demo_files_ready) return;
 
-    if (CF.shouldSkipGuestBootstrap(status)) {
-      if (status.has_active_analysis || status.has_generated_analysis) {
-        await CF.loadActiveDatasetsBar();
-      }
-      return;
-    }
-
     if (status.demo_ready) {
-      await CF.loadActiveDatasetsBar();
       CF.showDemoWorkspaceBanner('watch');
+      if (location.pathname === '/imports') await CF.loadImportHistory();
+      await CF.loadActiveDatasetsBar();
       return;
     }
 
     const boot = status.demo_bootstrap || {};
     if (boot.status === 'running') {
-      CF.toast('Loading sample workspace…', 'info', 8000);
-      for (let attempt = 0; attempt < 45; attempt += 1) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         await CF.refreshPlatformUI();
         if (CF.platformStatus?.demo_ready) break;
         if (CF.platformStatus?.demo_bootstrap?.status === 'failed') break;
-        if (CF.shouldSkipGuestBootstrap(CF.platformStatus)) return;
       }
-      await CF.loadActiveDatasetsBar();
-      if (CF.platformStatus?.demo_ready) {
-        CF.showDemoWorkspaceBanner('watch');
-        CF.toast('Sample workspace is ready. Click Run Your Analysis.', 'success', 8000);
+    } else {
+      try {
+        await CF.fetchJSON('/api/admin/demo/bootstrap', { method: 'POST' });
+        await CF.refreshPlatformUI();
+      } catch {
+        /* watch import optional on first visit */
       }
-      return;
     }
 
-    CF.toast('Preparing sample workspace…', 'info', 8000);
-    try {
-      const r = await CF.fetchJSON('/api/admin/demo/bootstrap', { method: 'POST' });
-      await CF.loadActiveDatasetsBar();
-      await CF.refreshPlatformUI();
-      if (location.pathname === '/reports') await CF.loadReports();
+    if (CF.platformStatus?.demo_ready) {
       CF.showDemoWorkspaceBanner('watch');
-      CF.toast(r.message || 'Sample workspace is ready. Click Run Your Analysis.', 'success', 8000);
-    } catch (e) {
-      if (!CF.shouldSkipGuestBootstrap(CF.platformStatus)) {
-        await CF.loadDemoCompany('sandbox');
-      }
+      if (location.pathname === '/imports') await CF.loadImportHistory();
     }
+    await CF.loadActiveDatasetsBar();
   },
 
   showDemoWorkspaceBanner(company) {

@@ -40,7 +40,14 @@
       <label id="btn-browse-files" for="file-input" class="btn-primary import-browse-label">Browse Files</label>
     </div>
     <div id="upload-status" class="mt-4 hidden"></div>
-    <div class="import-reset-actions mt-6 pt-4 border-t border-white/5">
+    <div class="import-sample-actions mt-6 pt-4 border-t border-white/5">
+      <p class="text-xs text-slate-500 mb-2">More sample packs (adds to Import History — watches load on first visit)</p>
+      <div class="guide-sample-actions">
+        <button type="button" class="btn-secondary btn-sm" onclick="CF.loadDemoCompany('motor')">+ Motor parts</button>
+        <button type="button" class="btn-secondary btn-sm" onclick="CF.loadDemoCompany('home')">+ Home appliances</button>
+      </div>
+    </div>
+    <div class="import-reset-actions mt-4 pt-4 border-t border-white/5">
       <p class="text-xs text-slate-500 mb-2">Environment</p>
       <button type="button" class="btn-sidebar-danger w-full mb-2" onclick="CF.openClearDatasetsModal()">Clear Imported Datasets</button>
       <button type="button" class="btn-sidebar-warning w-full" onclick="CF.openResetAnalysisModal()">Reset Analysis</button>
