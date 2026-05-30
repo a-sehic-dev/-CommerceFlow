@@ -132,6 +132,7 @@
         </div>
       </div>
       <div class="topbar-right">
+        <a href="/" class="topbar-home-link" title="Back to marketing site">← Landing</a>
         <span id="last-updated" class="status-pill hidden sm:inline-flex"></span>
         <button type="button" onclick="CF.generateAlerts()" class="icon-btn" title="Generate alerts">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341"/></svg>
@@ -209,7 +210,7 @@
       <div class="analysis-modal-header">
         <div>
           <h2 id="analysis-modal-title">Run Your Analysis</h2>
-          <p class="analysis-modal-sub">Select one <strong>sales</strong>, <strong>products</strong>, and <strong>inventory</strong> import. Same SKU across files. <a href="/imports#import-requirements" class="analysis-modal-link">Column requirements</a> · <a href="/guide" class="analysis-modal-link">Guide</a> · <a href="mailto:{{ support_email }}?subject=CommerceFlow%20data%20review%20request" class="analysis-modal-link">Send files for review</a></p>
+          <p class="analysis-modal-sub">Choose one <strong>sales</strong>, <strong>products</strong>, and <strong>inventory</strong> import each (sample watches, sample auto parts, or your uploads). Same SKU across files. File names can be anything — type is detected from columns. <a href="/imports#import-requirements" class="analysis-modal-link">Column requirements</a> · <a href="/guide" class="analysis-modal-link">Guide</a></p>
         </div>
         <button type="button" class="icon-btn" onclick="CF.closeAnalysisModal()" aria-label="Close">×</button>
       </div>

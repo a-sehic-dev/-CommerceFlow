@@ -455,26 +455,12 @@ const CF = {
 
   async resolveAnalysisSelection() {
     const missing = CF.requiredDatasetTypes().filter((key) => !CF.selection[key]);
-    if (!missing.length) {
-      return {
-        products_import_id: CF.selection.products.id,
-        sales_import_id: CF.selection.sales.id,
-        inventory_import_id: CF.selection.inventory.id,
-      };
-    }
-    try {
-      const active = await CF.fetchJSON('/api/analytics/active-datasets');
-      if (!active.has_selection) return null;
-      const ids = {
-        products_import_id: active.products_import_id,
-        sales_import_id: active.sales_import_id,
-        inventory_import_id: active.inventory_import_id,
-      };
-      if (!ids.products_import_id || !ids.sales_import_id || !ids.inventory_import_id) return null;
-      return ids;
-    } catch {
-      return null;
-    }
+    if (missing.length) return null;
+    return {
+      products_import_id: CF.selection.products.id,
+      sales_import_id: CF.selection.sales.id,
+      inventory_import_id: CF.selection.inventory.id,
+    };
   },
 
   async openAnalysisModal() {
@@ -489,14 +475,10 @@ const CF = {
     CF.selection = { sales: null, products: null, inventory: null };
 
     let catalog = { sales: [], products: [], inventory: [] };
-    let active = null;
     try {
-      [catalog, active] = await Promise.all([
-        CF.fetchJSON('/api/imports/catalog'),
-        CF.fetchJSON('/api/analytics/active-datasets'),
-      ]);
+      catalog = await CF.fetchJSON('/api/imports/catalog');
       CF.catalog = catalog;
-      CF.prefillSelectionFromActive(active, catalog);
+      /* Selection stays empty — client picks sales / products / inventory explicitly */
     } catch (e) {
       CF.toast('Could not load import history: ' + (CF.parseApiError(e).split('\n')[0] || 'error'), 'error');
       CF.catalog = catalog;

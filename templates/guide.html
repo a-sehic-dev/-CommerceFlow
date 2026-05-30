@@ -111,6 +111,9 @@
     <h3>Want to evaluate without uploading files?</h3>
     <p>Open a temporary analytics environment with example operational datasets and generate analytics intentionally.</p>
   </div>
-  <button type="button" class="btn-primary" onclick="location.href='/dashboard?demo=watch'">Load Sample Workspace</button>
+  <div class="guide-sample-actions">
+    <button type="button" class="btn-primary" onclick="CF.loadDemoCompany('watch')">Sample: Watches</button>
+    <button type="button" class="btn-secondary" onclick="CF.loadDemoCompany('auto')">Sample: Auto Parts</button>
+  </div>
 </section>
 {% endblock %}

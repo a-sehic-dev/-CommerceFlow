@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Generate ChronoHaus Watch Co. demo pack (~120 products, ~4.5k sales) for live guest workspace."""
+"""Generate DriveLine Auto Parts demo pack (~100 products, ~3.8k sales) for guest workspace."""
 
 from __future__ import annotations
 
-import json
 import random
 import sys
 from datetime import datetime, timedelta
@@ -14,48 +13,47 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 OUT = ROOT / "data" / "demo_companies"
-SNAPSHOT_PATH = OUT / "watch_analytics_snapshot.json"
 
-random.seed(2026)
+random.seed(3030)
 
-WATCH = {
-    "products_file": "watch_products.xlsx",
-    "inventory_file": "watch_inventory.xlsx",
-    "sales_file": "watch_sales_2025.xlsx",
-    "product_count": 120,
-    "sales_rows": 4_500,
+AUTO = {
+    "products_file": "auto_products.xlsx",
+    "inventory_file": "auto_inventory.xlsx",
+    "sales_file": "auto_sales_2025.xlsx",
+    "product_count": 100,
+    "sales_rows": 3_800,
 }
 
-BRANDS = ["ChronoHaus", "Nordvik", "Meridian", "Apex Time", "Velo Watch Co."]
-CATEGORIES = ["Dress", "Sport", "Dive", "Pilot", "Smart Hybrid"]
-WAREHOUSES = ["Zagreb DC", "Sarajevo Hub", "Munich 3PL"]
-CHANNELS = ["Web Store", "Amazon EU", "Retail POS", "B2B Portal"]
-REGIONS = ["BA", "HR", "DE", "AT", "SI"]
+BRANDS = ["DriveLine", "TorqueMax", "EuroParts", "ProStop", "VoltEdge"]
+CATEGORIES = ["Lighting", "Brakes", "Electrical", "Suspension", "Filters"]
+WAREHOUSES = ["Sarajevo DC", "Belgrade Hub", "Munich 3PL"]
+CHANNELS = ["Web Store", "B2B Portal", "Marketplace", "Retail POS"]
+REGIONS = ["BA", "HR", "RS", "DE", "AT"]
 START = datetime(2025, 1, 1)
 
 
 def build_products() -> pd.DataFrame:
     rows = []
-    for i in range(1, WATCH["product_count"] + 1):
+    for i in range(1, AUTO["product_count"] + 1):
         brand = BRANDS[i % len(BRANDS)]
         cat = CATEGORIES[i % len(CATEGORIES)]
-        sku = f"WCH-{i:04d}"
-        cost = round(random.uniform(45, 420), 2)
-        price = round(cost * random.uniform(1.35, 2.1), 2)
+        sku = f"AUT-{i:04d}"
+        cost = round(random.uniform(8, 220), 2)
+        price = round(cost * random.uniform(1.4, 2.2), 2)
         margin = round((price - cost) / price * 100, 2)
         rows.append(
             {
                 "sku": sku,
-                "title": f"{brand} {cat} Watch {i:03d}",
+                "title": f"{brand} {cat} Part {i:03d}",
                 "category": cat,
                 "brand": brand,
                 "price": price,
                 "cost": cost,
                 "margin_pct": margin,
                 "status": random.choice(["active", "active", "active", "clearance"]),
-                "discount_pct": random.choice([0, 0, 5, 10, 15]),
+                "discount_pct": random.choice([0, 0, 5, 10]),
                 "currency": "EUR",
-                "launch_date": (START - timedelta(days=random.randint(30, 900))).strftime("%Y-%m-%d"),
+                "launch_date": (START - timedelta(days=random.randint(30, 800))).strftime("%Y-%m-%d"),
             }
         )
     return pd.DataFrame(rows)
@@ -65,9 +63,9 @@ def build_inventory(products: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for _, p in products.iterrows():
         for wh in random.sample(WAREHOUSES, k=random.randint(1, 2)):
-            on_hand = random.randint(0, 180)
-            reserved = random.randint(0, min(25, on_hand))
-            inbound = random.randint(0, 40)
+            on_hand = random.randint(0, 220)
+            reserved = random.randint(0, min(30, on_hand))
+            inbound = random.randint(0, 50)
             rows.append(
                 {
                     "sku": p["sku"],
@@ -76,8 +74,8 @@ def build_inventory(products: pd.DataFrame) -> pd.DataFrame:
                     "reserved": reserved,
                     "inbound": inbound,
                     "available_units": max(0, on_hand - reserved),
-                    "days_in_stock": random.randint(5, 240),
-                    "turnover_90d": round(random.uniform(0.1, 4.5), 2),
+                    "days_in_stock": random.randint(5, 200),
+                    "turnover_90d": round(random.uniform(0.2, 5.0), 2),
                     "stockout_risk": random.choice(["low", "medium", "high"]),
                 }
             )
@@ -89,12 +87,12 @@ def build_sales(products: pd.DataFrame) -> pd.DataFrame:
     price_map = dict(zip(products["sku"], products["price"]))
     cost_map = dict(zip(products["sku"], products["cost"]))
     rows = []
-    order_seq = 10000
-    for _ in range(WATCH["sales_rows"]):
+    order_seq = 20000
+    for _ in range(AUTO["sales_rows"]):
         order_seq += 1
         sku = random.choice(skus)
-        qty = random.randint(1, 3)
-        unit_price = price_map[sku] * random.uniform(0.85, 1.0)
+        qty = random.randint(1, 4)
+        unit_price = price_map[sku] * random.uniform(0.88, 1.0)
         revenue = round(unit_price * qty, 2)
         margin = round(revenue - cost_map[sku] * qty, 2)
         sold_at = START + timedelta(
@@ -113,21 +111,15 @@ def build_sales(products: pd.DataFrame) -> pd.DataFrame:
                 "sold_at": sold_at.strftime("%Y-%m-%d %H:%M"),
                 "region": random.choice(REGIONS),
                 "discount_amount": round(max(0, price_map[sku] * qty - revenue), 2),
-                "customer": f"customer{random.randint(1, 850)}@example.com",
+                "customer": f"customer{random.randint(1, 900)}@example.com",
             }
         )
     return pd.DataFrame(rows)
 
 
 def main() -> None:
-    from scripts.generate_atlas_demo import (
-        compute_analytics_snapshot,
-        sync_landing_config,
-        update_chart_fallbacks,
-    )
-
     OUT.mkdir(parents=True, exist_ok=True)
-    print("Generating ChronoHaus Watch Co. demo datasets...")
+    print("Generating DriveLine Auto Parts demo datasets...")
     products = build_products()
     inventory = build_inventory(products)
     sales = build_sales(products)
@@ -135,18 +127,17 @@ def main() -> None:
     assert set(sales["sku"]) <= set(products["sku"])
     assert set(inventory["sku"]) <= set(products["sku"])
 
-    products.to_excel(OUT / WATCH["products_file"], index=False)
-    inventory.to_excel(OUT / WATCH["inventory_file"], index=False)
-    sales.to_excel(OUT / WATCH["sales_file"], index=False)
-    print(f"  {WATCH['products_file']}: {len(products):,} rows")
-    print(f"  {WATCH['inventory_file']}: {len(inventory):,} rows")
-    print(f"  {WATCH['sales_file']}: {len(sales):,} rows")
+    products.to_excel(OUT / AUTO["products_file"], index=False)
+    inventory.to_excel(OUT / AUTO["inventory_file"], index=False)
+    sales.to_excel(OUT / AUTO["sales_file"], index=False)
 
-    print("\nComputing analytics snapshot (watch_analytics_snapshot.json only)...")
-    snapshot = compute_analytics_snapshot(products, inventory, sales)
-    SNAPSHOT_PATH.write_text(json.dumps(snapshot, indent=2, default=str), encoding="utf-8")
+    total_rev = sales["revenue"].sum()
+    orders = sales["order_id"].nunique()
+    print(f"  {AUTO['products_file']}: {len(products):,} rows")
+    print(f"  {AUTO['inventory_file']}: {len(inventory):,} rows")
+    print(f"  {AUTO['sales_file']}: {len(sales):,} rows")
+    print(f"  Expected revenue ~${total_rev:,.2f} | orders {orders:,}")
     print(f"\nDone -> {OUT}")
-    print("Note: marketing landing preview stays on atlas_analytics_snapshot.json — do not sync_landing_config here.")
 
 
 if __name__ == "__main__":

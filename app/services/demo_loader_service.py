@@ -23,7 +23,7 @@ DEMO_DIR = ROOT / "data" / "demo_companies"
 
 DEMO_DATASET_TYPES = ("products", "inventory", "sales")
 # Guest / portfolio demo: ChronoHaus Watch Co. (medium-size, fast on Render).
-DEMO_WORKSPACE_KEYS = frozenset({"watch"})
+DEMO_WORKSPACE_KEYS = frozenset({"watch", "auto"})
 WATCH_DEMO_FILES = {
     "products": "watch_products.xlsx",
     "inventory": "watch_inventory.xlsx",
@@ -143,9 +143,14 @@ class DemoLoaderService:
 
     def _resolve_workspace_key(self, company: str, workspaces: dict[str, dict[str, str]]) -> str:
         key = company.lower().strip()
-        if key in ("sandbox", "demo", "guest", "atlas"):
+        if key in ("sandbox", "demo", "guest"):
             if "watch" in workspaces:
                 return "watch"
+        if key == "atlas" and "watch" in workspaces:
+            return "watch"
+        if key in ("auto", "car", "cars", "parts"):
+            if "auto" in workspaces:
+                return "auto"
         if key in workspaces:
             return key
         if not workspaces:
