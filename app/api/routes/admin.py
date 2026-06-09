@@ -6,10 +6,11 @@ from app.config import get_settings
 from app.database import get_db
 from app.models.feedback import FeedbackEntry
 from app.models.usage_event import UsageEvent
-from app.utils.founder_access import verify_founder_key
 from app.services.demo_bootstrap import bootstrap_watch_if_needed, get_bootstrap_state
 from app.services.demo_loader_service import DemoLoaderService, get_demo_companies
 from app.services.reset_service import ResetService
+from app.utils.founder_access import verify_founder_key
+from app.utils.reset_scope_resolver import resolve_reset_scope
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -103,41 +104,66 @@ async def list_feedback(
 
 
 @router.post("/clear-imported-datasets")
-async def clear_imported_datasets(db: AsyncSession = Depends(get_db)):
-    """Remove imports, uploads, history, and selection. Does not delete demo source files."""
-    result = await ResetService(db).clear_imported_datasets()
+async def clear_imported_datasets(
+    request: Request,
+    key: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove imports for the signed-in org, guest workspace, or all data with founder key."""
+    scope = resolve_reset_scope(request, key)
+    result = await ResetService(db).clear_imported_datasets(scope)
     await db.commit()
     return result
 
 
 @router.post("/reset-analysis")
-async def reset_analysis(db: AsyncSession = Depends(get_db)):
-    """Clear metrics, alerts, cache, and reports; keep imported datasets. Does not re-run analysis."""
-    result = await ResetService(db).reset_analysis()
+async def reset_analysis(
+    request: Request,
+    key: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Clear analysis results for the signed-in org, guest workspace, or all with founder key."""
+    scope = resolve_reset_scope(request, key)
+    result = await ResetService(db).reset_analysis(scope)
     await db.commit()
     return result
 
 
 @router.post("/clear-import-history")
-async def clear_import_history(db: AsyncSession = Depends(get_db)):
+async def clear_import_history(
+    request: Request,
+    key: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     """Deprecated alias — use clear-imported-datasets."""
-    result = await ResetService(db).clear_imported_datasets()
+    scope = resolve_reset_scope(request, key)
+    result = await ResetService(db).clear_imported_datasets(scope)
     await db.commit()
     return result
 
 
 @router.post("/reset-demo-environment")
-async def reset_demo_environment(db: AsyncSession = Depends(get_db)):
+async def reset_demo_environment(
+    request: Request,
+    key: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     """Deprecated alias — use reset-analysis."""
-    result = await ResetService(db).reset_analysis()
+    scope = resolve_reset_scope(request, key)
+    result = await ResetService(db).reset_analysis(scope)
     await db.commit()
     return result
 
 
 @router.post("/rebuild-analytics-engine")
-async def rebuild_analytics_engine(db: AsyncSession = Depends(get_db)):
+async def rebuild_analytics_engine(
+    request: Request,
+    key: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
     """Deprecated alias — use reset-analysis."""
-    result = await ResetService(db).reset_analysis()
+    scope = resolve_reset_scope(request, key)
+    result = await ResetService(db).reset_analysis(scope)
     await db.commit()
     return result
 

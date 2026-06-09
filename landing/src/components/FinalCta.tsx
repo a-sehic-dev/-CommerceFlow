@@ -1,6 +1,6 @@
 import { LINKS } from "../config";
+import { DemoLaunchButton } from "./DemoLaunchButton";
 import { Footer } from "./Footer";
-
 export function FinalCta() {
   return (
     <section className="section-pad pt-8 pb-0">
@@ -10,14 +10,11 @@ export function FinalCta() {
           Turn messy eCommerce exports into operational intelligence.
         </h2>
         <div className="relative mt-8 flex flex-wrap justify-center gap-4">
-          <a href="/dashboard" className="btn-primary">
-            Run Analysis
-          </a>
+          <DemoLaunchButton className="btn-primary">Try guest demo</DemoLaunchButton>
           <a href={LINKS.repo} target="_blank" rel="noopener noreferrer" className="btn-secondary">
             View GitHub
           </a>
-        </div>
-      </div>
+        </div>      </div>
       <Footer />
     </section>
   );

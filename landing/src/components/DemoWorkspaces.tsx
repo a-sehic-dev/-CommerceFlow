@@ -1,7 +1,6 @@
 import { DemoLaunchButton } from "./DemoLaunchButton";
 
-export function DemoWorkspaces() {
-  return (
+export function DemoWorkspaces() {  return (
     <section className="border-y border-white/[0.07] bg-[rgba(17,25,48,0.58)] py-16 sm:py-20">
       <div className="section-pad">
         <div className="mx-auto max-w-3xl text-center">
@@ -23,10 +22,9 @@ export function DemoWorkspaces() {
               </div>
             ))}
           </div>
-          <div className="mt-8">
-            <DemoLaunchButton className="btn-primary">Explore Sample Workspace</DemoLaunchButton>
-          </div>
-        </div>
+          <div className="mt-8 flex justify-center">
+            <DemoLaunchButton className="btn-primary">Explore sample workspace</DemoLaunchButton>
+          </div>        </div>
       </div>
     </section>
   );

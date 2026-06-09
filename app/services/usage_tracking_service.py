@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.usage_event import UsageEvent
 from app.utils.app_timezone import naive_local_now
 
-# Founder /admin/* visits are excluded from guest analytics.
-_EXCLUDED_PATH_PREFIX = "/admin"
+# Ignore duplicate bursts (double submit, middleware + client, refresh within seconds).
+_DEDUPE_SECONDS = 15
+_AUTH_DEDUPE_SECONDS = 90
 
 
 class UsageTrackingService:
@@ -27,6 +28,8 @@ class UsageTrackingService:
         "export_report",
         "feedback_submit",
         "assistant_chat",
+        "auth_login",
+        "auth_register",
     })
 
     def __init__(self, session: AsyncSession):
@@ -62,9 +65,20 @@ class UsageTrackingService:
         meta_json = None
         if meta:
             try:
-                meta_json = json.dumps(meta, default=str)[:2000]
+                meta_json = json.dumps(meta, default=str, sort_keys=True)[:2000]
             except (TypeError, ValueError):
                 meta_json = None
+
+        window = _AUTH_DEDUPE_SECONDS if event_type.startswith("auth_") else _DEDUPE_SECONDS
+        if await self._is_duplicate(
+            event_type=event_type,
+            path=path,
+            session_id=session_id,
+            meta_json=meta_json,
+            window_seconds=window,
+        ):
+            return
+
         self.session.add(
             UsageEvent(
                 event_type=event_type,
@@ -75,6 +89,34 @@ class UsageTrackingService:
             )
         )
         await self.session.flush()
+
+    async def _is_duplicate(
+        self,
+        *,
+        event_type: str,
+        path: str | None,
+        session_id: str | None,
+        meta_json: str | None,
+        window_seconds: int,
+    ) -> bool:
+        since = naive_local_now() - timedelta(seconds=window_seconds)
+        filters = [
+            UsageEvent.event_type == event_type,
+            UsageEvent.created_at >= since,
+        ]
+        if event_type.startswith("auth_") and meta_json:
+            filters.append(UsageEvent.meta_json == meta_json)
+        elif session_id:
+            filters.append(UsageEvent.session_id == session_id)
+            if path and event_type == "page_view":
+                filters.append(UsageEvent.path == path)
+        else:
+            return False
+
+        count = await self.session.scalar(
+            select(func.count()).select_from(UsageEvent).where(*filters)
+        )
+        return int(count or 0) > 0
 
     async def summary(self, *, days: int = 30) -> dict:
         since = naive_local_now() - timedelta(days=max(1, min(days, 90)))
@@ -116,6 +158,9 @@ class UsageTrackingService:
             "export_enterprise": await self._count_event("export_enterprise", since),
             "export_report": await self._count_event("export_report", since),
             "feedback_submit": await self._count_event("feedback_submit", since),
+            "auth_login": await self._count_event("auth_login", since),
+            "auth_register": await self._count_event("auth_register", since),
+            "auth_today": await self._count_auth_since(self._today_start()),
         }
         return {
             "period_days": days,
@@ -144,6 +189,23 @@ class UsageTrackingService:
             .where(
                 UsageEvent.created_at >= since,
                 UsageEvent.event_type == event_type,
+                self._public_event_filter(),
+            )
+        )
+        return int(value or 0)
+
+    @staticmethod
+    def _today_start() -> datetime:
+        now = naive_local_now()
+        return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    async def _count_auth_since(self, since: datetime) -> int:
+        value = await self.session.scalar(
+            select(func.count())
+            .select_from(UsageEvent)
+            .where(
+                UsageEvent.created_at >= since,
+                UsageEvent.event_type.in_(("auth_login", "auth_register")),
                 self._public_event_filter(),
             )
         )

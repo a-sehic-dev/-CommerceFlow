@@ -9,7 +9,7 @@ from fastapi.encoders import ENCODERS_BY_TYPE
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import admin, alerts, analytics, assistant, exports, feedback, imports, pages, usage
+from app.api.routes import admin, alerts, analytics, assistant, auth, exports, feedback, imports, pages, usage
 from app.config import ensure_directories, get_settings
 from app.middleware import usage_page_middleware
 from app.database import init_db
@@ -77,6 +77,7 @@ def create_app() -> FastAPI:
     app.middleware("http")(usage_page_middleware)
 
     app.include_router(pages.router)
+    app.include_router(auth.router)
     app.include_router(admin.router)
     app.include_router(assistant.router)
     app.include_router(imports.router)

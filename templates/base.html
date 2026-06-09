@@ -87,6 +87,17 @@
       {% endfor %}
     </nav>
 
+    <div class="sidebar-auth">
+      {% if auth_user_email %}
+        <p class="sidebar-auth-label">Signed in</p>
+        <p class="sidebar-auth-email">{{ auth_user_email }}</p>
+        <button type="button" class="btn-sidebar-ghost" onclick="CF.logout()">Sign out</button>
+      {% else %}
+        <p class="sidebar-auth-label">Private workspace</p>
+        <a href="/login" class="btn-secondary btn-primary-full">Sign in / Register</a>
+      {% endif %}
+    </div>
+
     <a href="{{ founder_url }}" target="_blank" rel="noopener noreferrer" class="sidebar-founder" aria-label="Open {{ founder_name }} LinkedIn profile">
       <span class="sidebar-founder-avatar" aria-hidden="true">{{ founder_name[:1] }}</span>
       <span class="sidebar-founder-copy">

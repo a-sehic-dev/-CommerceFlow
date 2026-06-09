@@ -9,15 +9,10 @@ const USEFUL_OPTIONS = [
   "Alerts & recommendations",
 ] as const;
 
+import { readOrCreateStorageId } from "../utils/storageId";
+
 function guestSessionId() {
-  const key = "cf_guest_session";
-  const existing = localStorage.getItem(key);
-  if (existing) return existing;
-  const next = crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  localStorage.setItem(key, next);
-  return next;
+  return readOrCreateStorageId("cf_guest_session", "cf-guest");
 }
 
 export function CommerceFlowFeedback() {

@@ -1,4 +1,5 @@
-import { LINKS, TRUST_TAGS } from "../config";
+import { TRUST_TAGS } from "../config";
+import { DemoLaunchButton } from "./DemoLaunchButton";
 
 export function Hero() {
   return (
@@ -15,14 +16,14 @@ export function Hero() {
           inventory intelligence, analytics pipelines, and structured business insights.
         </p>
         <div className="mt-10 flex flex-wrap gap-4">
-          <a href="/dashboard" className="btn-primary">
-            Run Analysis
-          </a>
-          <a href={LINKS.youtubeWatch} target="_blank" rel="noopener noreferrer" className="btn-secondary">
-            Watch Platform Walkthrough
+          <DemoLaunchButton className="btn-primary">Try guest demo</DemoLaunchButton>
+          <a href="#video" className="btn-secondary">
+            Watch walkthrough
           </a>
         </div>
-        <div className="mt-10 flex flex-wrap gap-2">
+        <p className="mt-4 max-w-2xl text-sm text-slate-500">
+          Use <strong className="font-medium text-slate-400">Login</strong> in the header for sign in or guest demo access.
+        </p>        <div className="mt-10 flex flex-wrap gap-2">
           {TRUST_TAGS.map((tag) => (
             <span
               key={tag}

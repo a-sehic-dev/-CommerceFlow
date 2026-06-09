@@ -136,10 +136,20 @@ class DatasetCatalogService:
         )
         return build_catalog_item(record, counts)
 
-    async def list_catalog(self, completed_only: bool = True) -> ImportCatalogResponse:
+    async def list_catalog(
+        self,
+        completed_only: bool = True,
+        *,
+        organization_id: int | None = None,
+        guest_only: bool = False,
+    ) -> ImportCatalogResponse:
         q = select(ImportRecord).order_by(ImportRecord.started_at.desc())
         if completed_only:
             q = q.where(ImportRecord.status.in_(["completed"]))
+        if guest_only:
+            q = q.where(ImportRecord.organization_id.is_(None))
+        elif organization_id is not None:
+            q = q.where(ImportRecord.organization_id == organization_id)
         result = await self.session.execute(q)
         records = list(result.scalars().all())
         db_counts = await self._row_counts_by_import()

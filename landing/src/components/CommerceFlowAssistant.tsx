@@ -25,13 +25,10 @@ type AssistantHistoryMessage = {
 const WELCOME =
   "I can help with imports, inventory risk, profit leakage, dashboards, reporting workflows, and operational analytics.";
 
+import { readOrCreateStorageId } from "../utils/storageId";
+
 function sessionId() {
-  const key = "cf_assistant_session";
-  const existing = localStorage.getItem(key);
-  if (existing) return existing;
-  const next = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  localStorage.setItem(key, next);
-  return next;
+  return readOrCreateStorageId("cf_assistant_session", "cf-assistant");
 }
 
 function AssistantAvatar({ active = false }: { active?: boolean }) {

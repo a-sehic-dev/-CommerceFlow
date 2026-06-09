@@ -8,7 +8,7 @@ export default {
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       colors: {
-        base: "#070b17",
+        surface: "#070b17",
         panel: "#0d1224",
         card: "#121933",
         accent: { DEFAULT: "#6366f1", glow: "#818cf8" },

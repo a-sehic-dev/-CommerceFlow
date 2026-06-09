@@ -93,6 +93,13 @@ const CF = {
     document.getElementById('sidebar-overlay')?.classList.remove('visible');
   },
 
+  async logout() {
+    try {
+      await CF.fetchJSON('/api/auth/logout', { method: 'POST' });
+    } catch { /* ignore */ }
+    window.location.href = '/login';
+  },
+
   async fetchJSON(url, options = {}) {
     const res = await fetch(url, options);
     const text = await res.text();
@@ -149,7 +156,7 @@ const CF = {
 
   sessionId() {
     const key = 'cf_guest_session';
-    let existing = localStorage.getItem(key) || CF.getCookie(key);
+    let existing = CF.getCookie(key) || localStorage.getItem(key);
     if (!existing) {
       existing = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
@@ -687,7 +694,6 @@ const CF = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      CF.trackUsage('feedback_submit', { rating: CF.feedbackRating });
       CF.toast(res.message || 'Feedback captured. Thank you.', 'success', 5000);
       sessionStorage.setItem('cf_feedback_submitted', '1');
       CF.closeFeedbackModal(false);

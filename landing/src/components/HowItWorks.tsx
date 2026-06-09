@@ -18,7 +18,7 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <section className="border-y border-white/[0.06] bg-[#0a0b10] py-16 sm:py-24">
+    <section id="about" className="border-y border-white/[0.06] bg-[#0a0b10] py-16 sm:py-24">
       <div className="section-pad">
         <h2 className="text-center text-2xl font-bold text-white sm:text-3xl">How it works</h2>
         <div className="mt-12 grid gap-8 md:grid-cols-3">

@@ -10,9 +10,10 @@
     <a href="https://commerceflow-1.onrender.com/admin/insights?key=cf-insights-sedin-2026" class="analysis-modal-link">commerceflow-1.onrender.com</a>
     — not this hostname. Suspend or stop using <code>commerceflow-svfv</code> to avoid confusion.
   </div>
+  <p class="insights-hint">Counters stay in SQLite until you click <strong>Reset founder counters</strong> — nothing auto-resets.</p>
   <div class="insights-toolbar">
     <button type="button" class="btn-sidebar-danger" id="btn-reset-insights" title="Delete all usage events and feedback on this server">
-      Reset founder counters (start fresh)
+      Reset founder counters (manual only)
     </button>
     <p class="insights-hint">Clears visitor stats + feedback inbox only. Does not delete guest imports or dashboard data.</p>
   </div>
@@ -119,12 +120,14 @@
       const f = data.funnel || {};
       document.getElementById('insights-funnel').innerHTML = `
         <div class="insights-stat"><span class="insights-stat-label">Total events</span><strong>${data.total_events || 0}</strong></div>
-        <div class="insights-stat"><span class="insights-stat-label">Unique sessions</span><strong>${data.unique_sessions || 0}</strong></div>
+        <div class="insights-stat"><span class="insights-stat-label">Browser sessions</span><strong>${data.unique_sessions || 0}</strong></div>
         <div class="insights-stat"><span class="insights-stat-label">Landing views</span><strong>${f.landing_view || 0}</strong></div>
-        <div class="insights-stat"><span class="insights-stat-label">Page views (app)</span><strong>${(data.by_event || []).find((r) => r.event === 'page_view')?.count || 0}</strong></div>
+        <div class="insights-stat"><span class="insights-stat-label">App page loads</span><strong>${(data.by_event || []).find((r) => r.event === 'page_view')?.count || 0}</strong></div>
         <div class="insights-stat"><span class="insights-stat-label">Run analysis OK</span><strong>${f.run_analysis_success || 0}</strong></div>
         <div class="insights-stat"><span class="insights-stat-label">Exports</span><strong>${(f.export_enterprise || 0) + (f.export_report || 0)}</strong></div>
-        <div class="insights-stat"><span class="insights-stat-label">Feedback sent</span><strong>${f.feedback_submit || 0}</strong></div>`;
+        <div class="insights-stat"><span class="insights-stat-label">Feedback sent</span><strong>${f.feedback_submit || 0}</strong></div>
+        <div class="insights-stat"><span class="insights-stat-label">Sign-ins today</span><strong>${f.auth_today || 0}</strong></div>
+        <div class="insights-stat"><span class="insights-stat-label">Account logins (30d)</span><strong>${(f.auth_login || 0) + (f.auth_register || 0)}</strong></div>`;
       document.getElementById('insights-by-event').innerHTML = (data.by_event || [])
         .map((row) => `<li><span>${row.event}</span><strong>${row.count}</strong></li>`).join('') || '<li>No events yet</li>';
       document.getElementById('insights-by-path').innerHTML = (data.by_path || [])
@@ -142,8 +145,14 @@
             export_report: 'Export report',
             feedback_submit: 'Feedback',
             assistant_chat: 'AI chat',
+            auth_login: 'Signed in',
+            auth_register: 'New account',
           }[row.event_type] || row.event_type;
-          return `<div class="insights-recent-row"><span class="insights-recent-time">${row.created_at || ''}</span><span class="insights-recent-event">${label}</span><span class="insights-recent-path">${row.path || ''}</span><code class="insights-recent-session">${(row.session_id || '').slice(0, 8)}</code></div>`;
+          let meta = {};
+          try { meta = row.meta_json ? JSON.parse(row.meta_json) : {}; } catch (_) {}
+          const who = meta.email ? `<span class="insights-recent-path">${meta.email}</span>` : '';
+          const company = meta.company_name ? `<span class="insights-recent-path">${meta.company_name}</span>` : '';
+          return `<div class="insights-recent-row"><span class="insights-recent-time">${row.created_at || ''}</span><span class="insights-recent-event">${label}</span>${who}${company}<span class="insights-recent-path">${row.path || ''}</span><code class="insights-recent-session">${(row.session_id || '').slice(0, 12)}</code></div>`;
         })
         .join('') || '<p class="text-slate-500">No activity yet.</p>';
 

@@ -181,27 +181,18 @@ class ImportService:
 
 
     async def create_import(
-
         self,
-
         filename: str,
-
         source_type: str,
-
         dataset_type: str = "auto",
-
+        organization_id: int | None = None,
     ) -> ImportRecord:
-
         record = ImportRecord(
-
             filename=filename,
-
             source_type=source_type,
-
             dataset_type=dataset_type if dataset_type not in ("auto", "") else "unknown",
-
             status=ST.IMPORTING,
-
+            organization_id=organization_id,
         )
 
         self.session.add(record)
@@ -256,6 +247,7 @@ class ImportService:
 
         errors: list[str] = []
         import_id = record.id
+        self._import_organization_id = record.organization_id
 
         try:
             import time
@@ -597,6 +589,7 @@ class ImportService:
                     cost=cost,
                     margin_pct=margin,
                     import_id=import_id,
+                    organization_id=getattr(self, "_import_organization_id", None),
                 )
             )
             count += 1
@@ -715,14 +708,19 @@ class ImportService:
 
 
 
-    async def list_imports(self, limit: int = 50) -> list[ImportRecord]:
-
-        result = await self.session.execute(
-
-            select(ImportRecord).order_by(ImportRecord.started_at.desc()).limit(limit)
-
-        )
-
+    async def list_imports(
+        self,
+        limit: int = 50,
+        *,
+        organization_id: int | None = None,
+        guest_only: bool = False,
+    ) -> list[ImportRecord]:
+        q = select(ImportRecord).order_by(ImportRecord.started_at.desc()).limit(limit)
+        if guest_only:
+            q = q.where(ImportRecord.organization_id.is_(None))
+        elif organization_id is not None:
+            q = q.where(ImportRecord.organization_id == organization_id)
+        result = await self.session.execute(q)
         return list(result.scalars().all())
 
     async def delete_import(self, import_id: int, *, remove_upload_copy: bool = True) -> bool:

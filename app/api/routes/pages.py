@@ -1,10 +1,11 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import get_settings
+from app.utils.session_auth import get_session_from_request
 from app.utils.workspace_modes import workspace_context
 
 router = APIRouter(tags=["pages"])
@@ -15,6 +16,9 @@ _LANDING_INDEX = Path("static/landing/index.html")
 
 def _page_ctx(request: Request, **extra: object) -> dict:
     settings = get_settings()
+    auth = get_session_from_request(request)
+    mode = "authenticated_workspace" if auth else settings.workspace_mode
+    ctx = workspace_context(mode)
     return {
         "request": request,
         "brand_name": settings.app_name,
@@ -23,7 +27,9 @@ def _page_ctx(request: Request, **extra: object) -> dict:
         "founder_url": settings.founder_url,
         "product_version": settings.product_version,
         "support_email": settings.assistant_alert_email,
-        **workspace_context(settings.workspace_mode),
+        "auth_user_email": auth.email if auth else None,
+        "auth_org_id": auth.organization_id if auth else None,
+        **ctx,
         **extra,
     }
 
@@ -37,6 +43,22 @@ async def marketing_landing():
         "<h1>CommerceFlow</h1><p>Landing not built. Run: cd landing && npm install && npm run build</p>",
         status_code=503,
     )
+
+
+@router.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    """Browsers request /favicon.ico by default — serve branded SVG."""
+    svg = Path("static/favicon.svg")
+    if svg.is_file():
+        return FileResponse(svg, media_type="image/svg+xml")
+    raise HTTPException(status_code=404)
+
+
+@router.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    if get_session_from_request(request):
+        return RedirectResponse("/dashboard", status_code=303)
+    return templates.TemplateResponse("login.html", _page_ctx(request, page="login"))
 
 
 @router.get("/dashboard", response_class=HTMLResponse)

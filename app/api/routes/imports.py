@@ -2,10 +2,11 @@ import json
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_organization_scope
 from app.config import get_settings
 from app.database import get_db
 from app.models.import_record import ImportRecord
@@ -72,13 +73,21 @@ def _import_response(record: ImportRecord) -> ImportStatusResponse:
     )
 
 
+def _catalog_scope(request: Request) -> dict:
+    org_id = get_organization_scope(request)
+    if org_id is None:
+        return {"guest_only": True}
+    return {"organization_id": org_id}
+
+
 @router.get("/catalog")
-async def import_catalog(db: AsyncSession = Depends(get_db)) -> ImportCatalogResponse:
-    return await DatasetCatalogService(db).list_catalog()
+async def import_catalog(request: Request, db: AsyncSession = Depends(get_db)) -> ImportCatalogResponse:
+    return await DatasetCatalogService(db).list_catalog(**_catalog_scope(request))
 
 
 @router.post("/upload")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     source_type: str = Form(default="generic"),
     dataset_type: str = Form(default="auto"),
@@ -120,7 +129,12 @@ async def upload_file(
     )
 
     service = ImportService(db)
-    record = await service.create_import(file.filename, source_type, dataset_type=dataset_type)
+    record = await service.create_import(
+        file.filename,
+        source_type,
+        dataset_type=dataset_type,
+        organization_id=get_organization_scope(request),
+    )
     await db.flush()
     await db.commit()
     logger.info("upload_committed id=%s path=%s", record.id, dest)
@@ -186,10 +200,14 @@ async def imports_in_progress(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/history")
-async def import_history(db: AsyncSession = Depends(get_db)):
+async def import_history(request: Request, db: AsyncSession = Depends(get_db)):
     await recover_stale_imports(db)
     service = ImportService(db)
-    records = await service.list_imports()
+    scope = _catalog_scope(request)
+    if scope.get("guest_only"):
+        records = await service.list_imports(guest_only=True)
+    else:
+        records = await service.list_imports(organization_id=scope["organization_id"])
     return [_import_response(r) for r in records if not is_internal_dataset(r.filename)]
 
 

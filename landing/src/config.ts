@@ -6,6 +6,8 @@ export const LINKS = {
   youtubeWatch: "https://youtu.be/UUou-nnGXnU",
   email: "commerceflow.platform@gmail.com",
   demo: "/dashboard",
+  login: "/login",
+  register: "/login",
 } as const;
 
 /** Latest Atlas Retail Group enterprise stress-test snapshot for landing preview. */

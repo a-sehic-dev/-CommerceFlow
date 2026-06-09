@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -17,6 +17,7 @@ from app.models.inventory import InventoryRecord
 from app.models.product import Product
 from app.models.sales import SalesRecord
 from app.services.analysis_state import AnalysisStateService
+from app.services.reset_scope import ResetScope
 from app.utils.active_config import get_active_analysis_config
 from app.utils.cache import analytics_cache
 
@@ -28,26 +29,29 @@ class ResetService:
         self.session = session
         self.settings = get_settings()
 
-    async def clear_imported_datasets(self) -> dict:
+    async def clear_imported_datasets(self, scope: ResetScope | None = None) -> dict:
         """
-        Remove all imported business data and upload artifacts.
+        Remove imported business data and upload artifacts for the given scope.
         Does not touch demo source files on disk (data/demo_companies/).
         """
-        counts = await self._delete_imported_data()
-        alerts_deleted = await self._delete_alerts()
-        snapshots_deleted = await self._delete_snapshots()
-        uploads_removed = self._clear_upload_dir()
-        exports_removed = self._clear_generated_exports()
-        await self._reset_active_selection()
-        await self._clear_persisted_scores()
+        scope = scope or ResetScope(organization_id=None)
+        counts = await self._delete_imported_data(scope)
+        alerts_deleted = await self._delete_alerts(scope)
+        snapshots_deleted = await self._delete_snapshots(scope)
+        uploads_removed = await self._clear_uploads_for_scope(scope)
+        exports_removed = self._clear_generated_exports() if scope.global_all else 0
+        await self._reset_active_selection(scope)
+        scores_cleared = await self._clear_persisted_scores(scope)
         await AnalysisStateService(self.session).clear_generated()
         analytics_cache.invalidate()
-        self._clear_export_jobs()
+        if scope.global_all:
+            self._clear_export_jobs()
         await self.session.flush()
         return {
             "success": True,
             "action": "clear_imported_datasets",
-            "message": "Imported datasets cleared. Upload new files to continue.",
+            "scope": scope.label,
+            "message": f"Imported datasets cleared for {scope.label}. Upload new files to continue.",
             "deleted": {
                 **counts,
                 "alerts": alerts_deleted,
@@ -55,26 +59,30 @@ class ResetService:
             },
             "uploads_removed": uploads_removed,
             "exports_removed": exports_removed,
+            "scores_cleared": scores_cleared,
             "datasets_preserved": False,
         }
 
-    async def reset_analysis(self) -> dict:
+    async def reset_analysis(self, scope: ResetScope | None = None) -> dict:
         """
-        Clear generated intelligence only — imported datasets and selection stay intact.
+        Clear generated intelligence for the scope — imported datasets stay intact.
         Does not run analysis; the user triggers Run Analysis when ready.
         """
-        alerts_deleted = await self._delete_alerts()
-        snapshots_deleted = await self._delete_snapshots()
-        exports_removed = self._clear_generated_exports()
-        scores_cleared = await self._clear_persisted_scores()
+        scope = scope or ResetScope(organization_id=None)
+        alerts_deleted = await self._delete_alerts(scope)
+        snapshots_deleted = await self._delete_snapshots(scope)
+        exports_removed = self._clear_generated_exports() if scope.global_all else 0
+        scores_cleared = await self._clear_persisted_scores(scope)
         analytics_cache.invalidate()
-        self._clear_export_jobs()
+        if scope.global_all:
+            self._clear_export_jobs()
         await AnalysisStateService(self.session).clear_generated()
         await self.session.flush()
         return {
             "success": True,
             "action": "reset_analysis",
-            "message": "Analysis results cleared. Run Your Analysis when you are ready to refresh the dashboard.",
+            "scope": scope.label,
+            "message": f"Analysis results cleared for {scope.label}. Run Your Analysis when you are ready.",
             "deleted": {
                 "alerts": alerts_deleted,
                 "analytics_snapshots": snapshots_deleted,
@@ -85,16 +93,14 @@ class ResetService:
             "has_generated_analysis": False,
         }
 
-    # Backward-compatible aliases
-    async def clear_import_history(self) -> dict:
-        return await self.clear_imported_datasets()
+    async def clear_import_history(self, scope: ResetScope | None = None) -> dict:
+        return await self.clear_imported_datasets(scope)
 
-    async def reset_demo_environment(self) -> dict:
-        return await self.reset_analysis()
+    async def reset_demo_environment(self, scope: ResetScope | None = None) -> dict:
+        return await self.reset_analysis(scope)
 
-    async def rebuild_analytics_engine(self, *, regenerate: bool = False) -> dict:
-        """Deprecated — use reset_analysis()."""
-        return await self.reset_analysis()
+    async def rebuild_analytics_engine(self, *, regenerate: bool = False, scope: ResetScope | None = None) -> dict:
+        return await self.reset_analysis(scope)
 
     async def platform_status(self) -> dict:
         import_count = await self._scalar_count(ImportRecord)
@@ -121,11 +127,61 @@ class ResetService:
             "demo_bootstrap": get_bootstrap_state(),
         }
 
-    async def _delete_imported_data(self) -> dict:
-        sales = await self.session.execute(delete(SalesRecord))
-        inventory = await self.session.execute(delete(InventoryRecord))
-        products = await self.session.execute(delete(Product))
-        imports = await self.session.execute(delete(ImportRecord))
+    async def _import_ids_for_scope(self, scope: ResetScope) -> list[int]:
+        if scope.global_all:
+            result = await self.session.execute(select(ImportRecord.id))
+        elif scope.organization_id is None:
+            result = await self.session.execute(
+                select(ImportRecord.id).where(ImportRecord.organization_id.is_(None))
+            )
+        else:
+            result = await self.session.execute(
+                select(ImportRecord.id).where(ImportRecord.organization_id == scope.organization_id)
+            )
+        return [row[0] for row in result.all()]
+
+    async def _delete_imported_data(self, scope: ResetScope) -> dict:
+        if scope.global_all:
+            sales = await self.session.execute(delete(SalesRecord))
+            inventory = await self.session.execute(delete(InventoryRecord))
+            products = await self.session.execute(delete(Product))
+            imports = await self.session.execute(delete(ImportRecord))
+            return {
+                "sales_records": sales.rowcount or 0,
+                "inventory_records": inventory.rowcount or 0,
+                "products": products.rowcount or 0,
+                "import_records": imports.rowcount or 0,
+            }
+
+        import_ids = await self._import_ids_for_scope(scope)
+        if not import_ids:
+            return {
+                "sales_records": 0,
+                "inventory_records": 0,
+                "products": 0,
+                "import_records": 0,
+            }
+
+        sales = await self.session.execute(
+            delete(SalesRecord).where(SalesRecord.import_id.in_(import_ids))
+        )
+        inventory = await self.session.execute(
+            delete(InventoryRecord).where(InventoryRecord.import_id.in_(import_ids))
+        )
+        if scope.organization_id is None:
+            product_filter = or_(
+                Product.organization_id.is_(None),
+                Product.import_id.in_(import_ids),
+            )
+        else:
+            product_filter = or_(
+                Product.organization_id == scope.organization_id,
+                Product.import_id.in_(import_ids),
+            )
+        products = await self.session.execute(delete(Product).where(product_filter))
+        imports = await self.session.execute(
+            delete(ImportRecord).where(ImportRecord.id.in_(import_ids))
+        )
         return {
             "sales_records": sales.rowcount or 0,
             "inventory_records": inventory.rowcount or 0,
@@ -133,38 +189,124 @@ class ResetService:
             "import_records": imports.rowcount or 0,
         }
 
-    async def _delete_alerts(self) -> int:
-        result = await self.session.execute(delete(Alert))
+    async def _delete_alerts(self, scope: ResetScope) -> int:
+        if scope.global_all:
+            stmt = delete(Alert)
+        elif scope.organization_id is None:
+            stmt = delete(Alert).where(Alert.organization_id.is_(None))
+        else:
+            stmt = delete(Alert).where(Alert.organization_id == scope.organization_id)
+        result = await self.session.execute(stmt)
         return result.rowcount or 0
 
-    async def _delete_snapshots(self) -> int:
-        result = await self.session.execute(delete(AnalyticsSnapshot))
+    async def _delete_snapshots(self, scope: ResetScope) -> int:
+        if scope.global_all:
+            stmt = delete(AnalyticsSnapshot)
+        elif scope.organization_id is None:
+            stmt = delete(AnalyticsSnapshot).where(AnalyticsSnapshot.organization_id.is_(None))
+        else:
+            stmt = delete(AnalyticsSnapshot).where(
+                AnalyticsSnapshot.organization_id == scope.organization_id
+            )
+        result = await self.session.execute(stmt)
         return result.rowcount or 0
 
-    async def _clear_persisted_scores(self) -> dict:
-        products = await self.session.execute(
-            update(Product).values(
-                health_score=None,
-                performance_rank=None,
-                trend_indicator=None,
+    async def _clear_persisted_scores(self, scope: ResetScope) -> dict:
+        if scope.global_all:
+            products = await self.session.execute(
+                update(Product).values(
+                    health_score=None,
+                    performance_rank=None,
+                    trend_indicator=None,
+                )
             )
-        )
-        inventory = await self.session.execute(
-            update(InventoryRecord).values(
-                inventory_health_score=None,
-                risk_level=None,
+            inventory = await self.session.execute(
+                update(InventoryRecord).values(
+                    inventory_health_score=None,
+                    risk_level=None,
+                )
             )
-        )
+        else:
+            import_ids = await self._import_ids_for_scope(scope)
+            if scope.organization_id is None:
+                if import_ids:
+                    product_filter = or_(
+                        Product.organization_id.is_(None),
+                        Product.import_id.in_(import_ids),
+                    )
+                else:
+                    product_filter = Product.organization_id.is_(None)
+            else:
+                if import_ids:
+                    product_filter = or_(
+                        Product.organization_id == scope.organization_id,
+                        Product.import_id.in_(import_ids),
+                    )
+                else:
+                    product_filter = Product.organization_id == scope.organization_id
+            products = await self.session.execute(
+                update(Product).where(product_filter).values(
+                    health_score=None,
+                    performance_rank=None,
+                    trend_indicator=None,
+                )
+            )
+            if import_ids:
+                inv_filter = InventoryRecord.import_id.in_(import_ids)
+            else:
+                return {
+                    "products_reset": products.rowcount or 0,
+                    "inventory_reset": 0,
+                }
+            inventory = await self.session.execute(
+                update(InventoryRecord).where(inv_filter).values(
+                    inventory_health_score=None,
+                    risk_level=None,
+                )
+            )
         return {
             "products_reset": products.rowcount or 0,
             "inventory_reset": inventory.rowcount or 0,
         }
 
-    async def _reset_active_selection(self) -> None:
+    async def _reset_active_selection(self, scope: ResetScope) -> None:
         config = await get_active_analysis_config(self.session)
-        config.products_import_id = None
-        config.sales_import_id = None
-        config.inventory_import_id = None
+        if scope.global_all:
+            config.products_import_id = None
+            config.sales_import_id = None
+            config.inventory_import_id = None
+            return
+
+        import_ids = set(await self._import_ids_for_scope(scope))
+        if config.products_import_id in import_ids:
+            config.products_import_id = None
+        if config.sales_import_id in import_ids:
+            config.sales_import_id = None
+        if config.inventory_import_id in import_ids:
+            config.inventory_import_id = None
+
+    async def _clear_uploads_for_scope(self, scope: ResetScope) -> int:
+        if scope.global_all:
+            return self._clear_upload_dir()
+
+        import_ids = await self._import_ids_for_scope(scope)
+        if not import_ids:
+            return 0
+        result = await self.session.execute(
+            select(ImportRecord.filename).where(ImportRecord.id.in_(import_ids))
+        )
+        filenames = {row[0] for row in result.all() if row[0]}
+        removed = 0
+        upload_dir = self.settings.upload_dir
+        for name in filenames:
+            path = upload_dir / Path(name).name
+            if path.is_file():
+                try:
+                    path.unlink()
+                    removed += 1
+                except OSError as exc:
+                    logger.warning("Could not remove upload %s: %s", path, exc)
+        return removed
 
     def _clear_upload_dir(self) -> int:
         removed = 0
