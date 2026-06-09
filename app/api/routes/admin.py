@@ -10,6 +10,7 @@ from app.services.demo_bootstrap import bootstrap_watch_if_needed, get_bootstrap
 from app.services.demo_loader_service import DemoLoaderService, get_demo_companies
 from app.services.reset_service import ResetService
 from app.utils.founder_access import verify_founder_key
+from app.utils.database_url import mask_database_url, is_postgres_url
 from app.utils.reset_scope_resolver import resolve_reset_scope
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -40,7 +41,8 @@ async def analytics_health(
     last_feedback = await db.scalar(select(func.max(FeedbackEntry.created_at)))
     return {
         "service_host": host,
-        "database_url": settings.database_url,
+        "database_url": mask_database_url(settings.database_url),
+        "database_backend": "postgresql" if is_postgres_url(settings.database_url) else "sqlite",
         "usage_events_total": usage_total,
         "feedback_entries_total": feedback_total,
         "last_usage_event_at": last_usage.isoformat() if last_usage else None,
@@ -49,7 +51,11 @@ async def analytics_health(
             f"Guests and admin must use the same hostname (this service: {host}). "
             "commerceflow-1 and commerceflow-svfv are separate databases. "
             "Set the same USAGE_STATS_KEY on every Render service you use. "
-            "Redeploy clears SQLite without a persistent disk."
+            + (
+                "Redeploy clears SQLite without a persistent disk."
+                if not is_postgres_url(settings.database_url)
+                else "PostgreSQL — data survives redeploys."
+            )
         ),
     }
 

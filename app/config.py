@@ -1,7 +1,10 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.utils.database_url import normalize_async_database_url
 
 
 class Settings(BaseSettings):
@@ -59,6 +62,11 @@ class Settings(BaseSettings):
     smtp_username: str | None = None
     smtp_password: str | None = None
     smtp_from_email: str | None = None
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _normalize_database_url(cls, value: str) -> str:
+        return normalize_async_database_url(str(value or ""))
 
     @property
     def max_upload_bytes(self) -> int:

@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.active_analysis import ActiveAnalysisConfig
 from app.utils.app_timezone import naive_local_now
+from app.utils.database_url import is_sqlite_url
+from app.config import get_settings
 
 
 async def get_active_analysis_config(session: AsyncSession) -> ActiveAnalysisConfig:
@@ -21,13 +23,17 @@ async def get_active_analysis_config(session: AsyncSession) -> ActiveAnalysisCon
 
     now = naive_local_now()
     try:
-        await session.execute(
-            text(
+        if is_sqlite_url(get_settings().database_url):
+            insert_sql = (
                 "INSERT OR IGNORE INTO active_analysis_config (id, updated_at) "
                 "VALUES (1, :updated_at)"
-            ),
-            {"updated_at": now},
-        )
+            )
+        else:
+            insert_sql = (
+                "INSERT INTO active_analysis_config (id, updated_at) "
+                "VALUES (1, :updated_at) ON CONFLICT (id) DO NOTHING"
+            )
+        await session.execute(text(insert_sql), {"updated_at": now})
         await session.flush()
     except IntegrityError:
         await session.rollback()

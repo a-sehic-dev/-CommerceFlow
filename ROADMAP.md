@@ -42,7 +42,8 @@
 
 ## Faza 2 — Produkcija & stabilnost (sedmica 3–4)
 
-- [ ] PostgreSQL umjesto SQLite (Render persistent disk ili managed DB)
+- [x] PostgreSQL podrška u kodu (`postgresql+asyncpg`, migracije, Render `render.yaml`)
+- [ ] PostgreSQL instanca na Renderu + `DATABASE_URL` na web servisu (ručno)
 - [ ] Dnevni backup baze
 - [ ] SMTP na Renderu (feedback email obavijesti)
 - [ ] Više API/integration testova

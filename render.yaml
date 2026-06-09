@@ -1,5 +1,12 @@
-# Deploy on Render.com (free tier) — public URL for LinkedIn
-# Dashboard: New + Web Service → Connect repo → Render reads this file
+# Deploy on Render.com — public URL + optional PostgreSQL (Faza 2)
+# Dashboard: New + Web Service → Connect repo → or use Manual settings on existing service
+
+databases:
+  - name: commerceflow-db
+    plan: free
+    databaseName: commerceflow
+    user: commerceflow
+
 services:
   - type: web
     name: commerceflow
@@ -16,3 +23,7 @@ services:
         generateValue: true
       - key: PYTHON_VERSION
         value: "3.11.9"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: commerceflow-db
+          property: connectionString

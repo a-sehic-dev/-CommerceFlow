@@ -10,7 +10,26 @@ Lokalno (`127.0.0.1`) **samo ti vidiš**. Za LinkedIn treba **javni HTTPS URL**.
 - `USAGE_STATS_KEY` = tvoja šifra (npr. `cf-insights-sedin-2026`) — **isti na svakom Render servisu**
 - `OPENAI_API_KEY` = tvoj ključ (opcionalno)
 
-**Jedan javni URL:** Ako imaš više Render servisa (`commerceflow-1`, `commerceflow-svfv`), svaki ima **svoju SQLite bazu**. Demo + admin moraju biti **isti hostname**, npr. samo `https://commerceflow-svfv.onrender.com`.
+**Jedan javni URL:** Ako imaš više Render servisa (`commerceflow-1`, `commerceflow-svfv`), svaki ima **svoju bazu**. Demo + admin moraju biti **isti hostname**, npr. samo `https://commerceflow-1.onrender.com`.
+
+## Faza 2 — PostgreSQL (preporučeno za produkciju)
+
+SQLite na Renderu **gubi podatke** na redeploy. PostgreSQL ih čuva (nalozi, importi, insights).
+
+### Koraci na Renderu (~5 min)
+
+1. **Dashboard → New + → PostgreSQL** (Free)
+2. Ime npr. `commerceflow-db` → **Create Database**
+3. Otvori **-CommerceFlow-1** web servis → **Environment**
+4. **Add Environment Variable:**
+   - Key: `DATABASE_URL`
+   - Value: kopiraj **Internal Database URL** iz Postgres servisa (počinje sa `postgres://...`)
+5. **Manual Deploy** web servisa (povuče novi kod + `asyncpg`)
+6. Founder admin → **database backend: postgresql** (u health panelu)
+
+Lokalno ostaje SQLite — nema promjene za `python run.py`.
+
+> Napomena: Render Postgres free tier ističe nakon 90 dana — za ozbiljan pilot pređi na paid plan ili backup.
 
 **Build Command:**
 ```
