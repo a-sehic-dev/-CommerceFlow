@@ -238,10 +238,10 @@ async def data_quality(db: AsyncSession = Depends(get_db)):
 async def _module_result(db: AsyncSession, key: str):
     active = await ActiveDatasetService(db).get_active()
     if not active.has_selection:
-        raise HTTPException(
-            422,
-            detail="No active datasets selected. Run Your Analysis to choose imports.",
-        )
+        empty = dict(EMPTY_MODULE_PAYLOADS.get(key, {}))
+        empty["requires_dataset_selection"] = True
+        empty["has_generated_analysis"] = False
+        return sanitize_for_json(empty)
     if not await AnalysisStateService(db).has_generated_analysis():
         empty = dict(EMPTY_MODULE_PAYLOADS.get(key, {}))
         empty["requires_analysis_generation"] = True

@@ -1031,7 +1031,7 @@ const CF = {
     CF.showSkeleton('product-summary', 'metrics', 3);
     try {
       const data = await CF.fetchJSON('/api/analytics/products');
-      if (data.requires_analysis_generation || !CF.analysisViewReady()) {
+      if (data.requires_dataset_selection || data.requires_analysis_generation || !CF.analysisViewReady()) {
         CF.showNoAnalysisModule('product-summary', [
           'top-sellers-table', 'worst-table', 'rising-list', 'declining-list',
         ]);
@@ -1076,7 +1076,13 @@ const CF = {
       document.getElementById('declining-list').innerHTML = (data.declining || [])
         .map((p) => CF.listRow(p.title || p.sku, p.sku, '↓ Declining', 'negative'))
         .join('') || '<p class="empty-state">None detected</p>';
-    } catch {
+    } catch (err) {
+      if (err.status === 422) {
+        CF.showNoAnalysisModule('product-summary', [
+          'top-sellers-table', 'worst-table', 'rising-list', 'declining-list',
+        ]);
+        return;
+      }
       CF.toast('Failed to load products', 'error');
     }
   },
@@ -1085,7 +1091,7 @@ const CF = {
     CF.showSkeleton('inventory-summary', 'metrics', 4);
     try {
       const data = await CF.fetchJSON('/api/analytics/inventory');
-      if (data.requires_analysis_generation || !CF.analysisViewReady()) {
+      if (data.requires_dataset_selection || data.requires_analysis_generation || !CF.analysisViewReady()) {
         CF.showNoAnalysisModule('inventory-summary', ['inventory-alerts', 'reorder-table']);
         return;
       }
@@ -1121,7 +1127,11 @@ const CF = {
         ['SKU', 'Qty', 'Reorder', 'Days Cover', 'Urgency'],
         rows
       );
-    } catch {
+    } catch (err) {
+      if (err.status === 422) {
+        CF.showNoAnalysisModule('inventory-summary', ['inventory-alerts', 'reorder-table']);
+        return;
+      }
       CF.toast('Failed to load inventory', 'error');
     }
   },
@@ -1130,7 +1140,7 @@ const CF = {
     CF.showSkeleton('profit-summary', 'metrics', 3);
     try {
       const data = await CF.fetchJSON('/api/analytics/profit-leakage');
-      if (data.requires_analysis_generation || !CF.analysisViewReady()) {
+      if (data.requires_dataset_selection || data.requires_analysis_generation || !CF.analysisViewReady()) {
         const total = document.getElementById('leakage-total');
         if (total) total.textContent = '—';
         CF.showNoAnalysisModule('profit-summary', ['profit-issues', 'profit-recs']);
@@ -1166,7 +1176,11 @@ const CF = {
       document.getElementById('profit-recs').innerHTML = (data.recommendations || [])
         .map((r) => `<li class="recommendation-item">${r}</li>`)
         .join('');
-    } catch {
+    } catch (err) {
+      if (err.status === 422) {
+        CF.showNoAnalysisModule('profit-summary', ['profit-issues', 'profit-recs']);
+        return;
+      }
       CF.toast('Failed to load profit data', 'error');
     }
   },
