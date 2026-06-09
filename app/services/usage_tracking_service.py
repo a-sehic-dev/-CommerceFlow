@@ -11,6 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.usage_event import UsageEvent
 from app.utils.app_timezone import naive_local_now
 
+# Founder /admin/* visits are excluded from guest analytics.
+_EXCLUDED_PATH_PREFIX = "/admin"
+
 # Ignore duplicate bursts (double submit, middleware + client, refresh within seconds).
 _DEDUPE_SECONDS = 15
 _AUTH_DEDUPE_SECONDS = 90
