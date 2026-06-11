@@ -19,6 +19,19 @@ def naive_local_now() -> datetime:
     return datetime.now(APP_TZ).replace(tzinfo=None)
 
 
+def to_db_datetime(value: datetime | None) -> datetime | None:
+    """Naive local datetime for TIMESTAMP columns (PostgreSQL + SQLite)."""
+    if value is None:
+        return None
+    if hasattr(value, "to_pydatetime"):
+        value = value.to_pydatetime()
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is not None:
+        return value.astimezone(APP_TZ).replace(tzinfo=None)
+    return value
+
+
 def ensure_local(dt: datetime) -> datetime:
     """Attach or convert to Europe/Sarajevo."""
     if dt.tzinfo is None:

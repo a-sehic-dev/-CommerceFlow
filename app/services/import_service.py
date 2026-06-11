@@ -2,7 +2,7 @@ import json
 
 from datetime import datetime
 
-from app.utils.app_timezone import naive_local_now
+from app.utils.app_timezone import naive_local_now, to_db_datetime
 
 from pathlib import Path
 
@@ -622,9 +622,11 @@ class ImportService:
             qty = safe_int(row.get("quantity"), 1)
             price = safe_float(row.get("price") or row.get("unit_price"))
             revenue = safe_float(row.get("revenue")) or (price * qty if price else 0)
-            sold_at = pd.to_datetime(row.get("sold_at"), errors="coerce")
+            sold_at = pd.to_datetime(row.get("sold_at"), errors="coerce", utc=True)
             if pd.isna(sold_at):
                 sold_at = naive_local_now()
+            else:
+                sold_at = to_db_datetime(sold_at)
             channel = str(row.get("sales_channel", "")) if pd.notna(row.get("sales_channel")) else None
             customer = str(row.get("customer", "")) if pd.notna(row.get("customer")) else None
             order_id = str(row.get("order_id", "")) if pd.notna(row.get("order_id")) else None
@@ -637,7 +639,7 @@ class ImportService:
                     revenue=revenue,
                     discount_amount=safe_float(row.get("discount_amount")),
                     channel=channel or customer,
-                    sold_at=sold_at.to_pydatetime() if hasattr(sold_at, "to_pydatetime") else sold_at,
+                    sold_at=sold_at,
                     import_id=import_id,
                 )
             )

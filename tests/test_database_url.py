@@ -1,5 +1,8 @@
 # tests/test_database_url.py
 
+from datetime import datetime, timezone
+
+from app.utils.app_timezone import to_db_datetime
 from app.utils.database_url import (
     is_postgres_url,
     is_sqlite_url,
@@ -32,3 +35,10 @@ def test_mask_database_url_hides_password():
     masked = mask_database_url(raw)
     assert "secret" not in masked
     assert "user" in masked
+
+
+def test_to_db_datetime_strips_timezone():
+    aware = datetime(2025, 1, 27, 15, 18, tzinfo=timezone.utc)
+    naive = to_db_datetime(aware)
+    assert naive is not None
+    assert naive.tzinfo is None
