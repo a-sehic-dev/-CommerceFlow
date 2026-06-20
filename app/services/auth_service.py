@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from passlib.context import CryptContext
+import bcrypt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,19 +12,26 @@ from app.models.organization import Organization
 from app.models.user import User
 from app.utils.session_auth import slugify
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+BCRYPT_MAX_PASSWORD_BYTES = 72
+
+
+def _password_bytes(password: str) -> bytes:
+    return password.encode("utf-8")
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    secret = _password_bytes(password)
+    return bcrypt.hashpw(secret, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, hashed: str | None) -> bool:
     if not hashed:
         return False
-    return pwd_context.verify(password, hashed)
+    try:
+        return bcrypt.checkpw(_password_bytes(password), hashed.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
 
 
 def validate_email(email: str) -> str:
@@ -37,6 +44,8 @@ def validate_email(email: str) -> str:
 def validate_password(password: str) -> None:
     if len(password) < 8:
         raise ValueError("Password must be at least 8 characters.")
+    if len(_password_bytes(password)) > BCRYPT_MAX_PASSWORD_BYTES:
+        raise ValueError("Password must be 72 characters or fewer.")
 
 
 async def _unique_org_slug(session: AsyncSession, base: str) -> str:
