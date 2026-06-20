@@ -7,6 +7,9 @@ from app.models.inventory import InventoryRecord
 from app.models.organization import Organization
 from app.models.product import Product
 from app.models.sales import SalesRecord
+from app.models.scheduled_report import ScheduledReport
+from app.models.store_connection import StoreConnection
+from app.models.team_invite import TeamInvite
 from app.models.usage_event import UsageEvent
 from app.models.user import User
 
@@ -22,4 +25,7 @@ __all__ = [
     "UsageEvent",
     "User",
     "Organization",
+    "TeamInvite",
+    "StoreConnection",
+    "ScheduledReport",
 ]

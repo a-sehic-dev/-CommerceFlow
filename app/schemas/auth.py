@@ -19,3 +19,4 @@ class AuthUserResponse(BaseModel):
     full_name: str | None
     organization_id: int
     organization_name: str | None = None
+    role: str = "owner"

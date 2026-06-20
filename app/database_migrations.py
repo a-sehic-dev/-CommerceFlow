@@ -12,6 +12,7 @@ async def migrate_schema(conn: AsyncConnection, database_url: str) -> None:
     dialect = conn.dialect.name
     await _migrate_import_records(conn, dialect)
     await _migrate_org_columns(conn, dialect)
+    await _migrate_user_roles(conn, dialect)
     await _migrate_active_analysis_config(conn, dialect)
     await _ensure_active_analysis_singleton(conn, dialect)
     if await _needs_backfill(conn):
@@ -76,6 +77,20 @@ async def _ensure_active_analysis_singleton(conn: AsyncConnection, dialect: str)
             """
         ),
         {"updated_at": updated_at},
+    )
+
+
+async def _migrate_user_roles(conn: AsyncConnection, dialect: str) -> None:
+    await _add_column_if_missing(
+        conn,
+        table="users",
+        dialect=dialect,
+        name="role",
+        sqlite_type="VARCHAR(32) DEFAULT 'owner'",
+        postgres_type="VARCHAR(32) DEFAULT 'owner'",
+    )
+    await conn.execute(
+        text("UPDATE users SET role = 'owner' WHERE role IS NULL OR role = ''")
     )
 
 

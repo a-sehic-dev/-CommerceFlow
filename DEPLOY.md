@@ -79,6 +79,60 @@ Vidiš:
 
 **Feedback ne stiže automatski na Gmail** osim ako postaviš SMTP na Renderu (`SMTP_HOST`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`). Inače je samo u admin inboxu.
 
+**SMTP takođe šalje:** obavijest pri novoj registraciji, team invite linkove, weekly Excel report.
+
+### SMTP (Gmail primjer)
+
+Render → **-CommerceFlow-1** → Environment:
+
+| Key | Value |
+|-----|-------|
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_PORT` | `587` |
+| `SMTP_USERNAME` | `commerceflow.platform@gmail.com` |
+| `SMTP_PASSWORD` | Gmail **App Password** (ne obična lozinka) |
+| `SMTP_FROM_EMAIL` | `commerceflow.platform@gmail.com` |
+
+Nakon deploya: `/api/health` → `"smtp_configured": true`
+
+## Faza 3 — Shopify, WooCommerce, weekly reports
+
+### Obavezno na Renderu
+
+| Key | Value |
+|-----|-------|
+| `APP_BASE_URL` | `https://commerceflow-1.onrender.com` |
+
+### Shopify Partner app
+
+1. [partners.shopify.com](https://partners.shopify.com) → Apps → Create app
+2. **Allowed redirection URL:** `https://commerceflow-1.onrender.com/api/integrations/shopify/callback`
+3. Admin API scopes: `read_products`, `read_orders`, `read_inventory`
+4. Render Environment:
+
+| Key | Value |
+|-----|-------|
+| `SHOPIFY_API_KEY` | Client ID |
+| `SHOPIFY_API_SECRET` | Client secret |
+
+5. Uloguj se → **Imports** → Connect Shopify → Sync
+
+### Weekly report cron (Render)
+
+New → **Cron Job** → Schedule `0 8 * * 1` (ponedjeljak 08:00 UTC):
+
+```bash
+curl -X POST "https://commerceflow-1.onrender.com/api/admin/cron/weekly-reports?key=TVOJ_USAGE_STATS_KEY"
+```
+
+Korisnici postavljaju email na **Export Center** → Weekly email → Save.
+
+### Backup
+
+Postgres Basic na Renderu ima dnevne backup-e. Provjera:
+
+`https://commerceflow-1.onrender.com/api/admin/backup-status?key=TVOJ_USAGE_STATS_KEY`
+
 **Napomena:** Render bez persistent diska briše SQLite na redeploy — stari feedback može nestati.
 
 ## Usage insights (bez Google Analytics)

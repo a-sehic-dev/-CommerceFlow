@@ -94,6 +94,7 @@ class AuthService:
             full_name=(full_name or "").strip() or None,
             hashed_password=hash_password(password),
             organization_id=org.id,
+            role="owner",
             is_active=True,
         )
         self.session.add(user)

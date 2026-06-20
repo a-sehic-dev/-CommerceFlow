@@ -1270,6 +1270,7 @@ const CF = {
       if (file) CF.uploadFile(file);
     });
     CF.loadImportHistory();
+    CF.loadIntegrationStatus();
   },
 
   async uploadFile(file) {
@@ -2618,6 +2619,95 @@ const CF = {
       CF.toast(CF.parseApiError(e).split('\n')[0] || 'Export failed', 'error');
     } finally {
       CF.exportBusy = false;
+    }
+  },
+
+  async exportExecutivePdf() {
+    await CF.hydrateExportState();
+    if (!CF.exportState.hasAnalysis) {
+      CF.toast('Run Your Analysis before exporting PDF.', 'warning');
+      return;
+    }
+    return CF.exportReport('executive_pdf', 'pdf');
+  },
+
+  async saveReportSchedule() {
+    const email = document.getElementById('schedule-email')?.value?.trim();
+    if (!email) return CF.toast('Enter an email for weekly reports.', 'warning');
+    try {
+      await CF.fetchJSON('/api/reports/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, day_of_week: 0, enabled: true }),
+      });
+      CF.toast('Weekly report schedule saved (Mondays).', 'success');
+    } catch (e) {
+      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Sign in to schedule reports.', 'error');
+    }
+  },
+
+  async loadIntegrationStatus() {
+    const el = document.getElementById('integration-status');
+    if (!el) return;
+    try {
+      const data = await CF.fetchJSON('/api/integrations/status');
+      const parts = [];
+      if (data.shopify?.connected) parts.push(`Shopify: ${data.shopify.store}`);
+      if (data.woocommerce?.connected) parts.push(`WooCommerce: ${data.woocommerce.store}`);
+      el.textContent = parts.length ? parts.join(' · ') : 'No live store connected yet.';
+    } catch {
+      el.textContent = 'Sign in to connect Shopify or WooCommerce.';
+    }
+  },
+
+  async connectShopify() {
+    const shop = document.getElementById('shopify-shop')?.value?.trim();
+    if (!shop) return CF.toast('Enter your myshopify.com domain.', 'warning');
+    try {
+      const data = await CF.fetchJSON(`/api/integrations/shopify/install?shop=${encodeURIComponent(shop)}`);
+      if (data.authorize_url) window.location.href = data.authorize_url;
+    } catch (e) {
+      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Shopify connect failed.', 'error');
+    }
+  },
+
+  async syncShopify() {
+    try {
+      const data = await CF.fetchJSON('/api/integrations/shopify/sync', { method: 'POST' });
+      CF.toast(`Shopify sync complete (${(data.synced || []).length} files).`, 'success');
+      CF.loadImportHistory();
+    } catch (e) {
+      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Shopify sync failed.', 'error');
+    }
+  },
+
+  async connectWooCommerce() {
+    const store_url = document.getElementById('woo-url')?.value?.trim();
+    const consumer_key = document.getElementById('woo-key')?.value?.trim();
+    const consumer_secret = document.getElementById('woo-secret')?.value?.trim();
+    if (!store_url || !consumer_key || !consumer_secret) {
+      return CF.toast('Store URL, key, and secret are required.', 'warning');
+    }
+    try {
+      await CF.fetchJSON('/api/integrations/woocommerce/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ store_url, consumer_key, consumer_secret }),
+      });
+      CF.toast('WooCommerce connected.', 'success');
+      CF.loadIntegrationStatus();
+    } catch (e) {
+      CF.toast(CF.parseApiError(e).split('\n')[0] || 'WooCommerce connect failed.', 'error');
+    }
+  },
+
+  async syncWooCommerce() {
+    try {
+      const data = await CF.fetchJSON('/api/integrations/woocommerce/sync', { method: 'POST' });
+      CF.toast(`WooCommerce sync complete (${(data.synced || []).length} files).`, 'success');
+      CF.loadImportHistory();
+    } catch (e) {
+      CF.toast(CF.parseApiError(e).split('\n')[0] || 'WooCommerce sync failed.', 'error');
     }
   },
 };

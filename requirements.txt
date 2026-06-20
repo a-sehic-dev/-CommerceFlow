@@ -15,3 +15,6 @@ matplotlib==3.9.4
 Pillow==11.0.0
 passlib[bcrypt]==1.7.4
 asyncpg==0.30.0
+httpx==0.28.1
+cryptography==44.0.0
+reportlab==4.2.5

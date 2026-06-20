@@ -32,9 +32,20 @@ from app.utils.dataset_display import (
     resolve_display_name,
 )
 from app.utils.file_types import is_supported_upload
+from app.utils.rate_limit import SlidingWindowLimiter, client_ip
 
 router = APIRouter(prefix="/api/imports", tags=["imports"])
 logger = logging.getLogger("commerceflow.import")
+_upload_limiter = SlidingWindowLimiter(window_seconds=3600, max_events=20)
+
+
+def _upload_limiter_for_request() -> SlidingWindowLimiter:
+    settings = get_settings()
+    if _upload_limiter.window_seconds != settings.upload_window_seconds:
+        _upload_limiter.window_seconds = settings.upload_window_seconds
+    if _upload_limiter.max_events != settings.upload_ip_limit:
+        _upload_limiter.max_events = settings.upload_ip_limit
+    return _upload_limiter
 
 
 def _detection_reason(record: ImportRecord) -> str | None:
@@ -94,6 +105,10 @@ async def upload_file(
     db: AsyncSession = Depends(get_db),
 ):
     settings = get_settings()
+    _upload_limiter_for_request().check(
+        client_ip(request),
+        cooldown_seconds=settings.upload_cooldown_seconds,
+    )
     if not file.filename:
         raise HTTPException(400, "No filename provided")
 

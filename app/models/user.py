@@ -18,4 +18,5 @@ class User(Base):
     hashed_password: Mapped[str | None] = mapped_column(String(512), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     organization_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    role: Mapped[str] = mapped_column(String(32), default="owner")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=naive_local_now)

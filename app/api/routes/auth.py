@@ -7,6 +7,7 @@ from app.models.organization import Organization
 from app.schemas.auth import AuthUserResponse, LoginRequest, RegisterRequest
 from app.services.auth_service import AuthService
 from app.services.usage_tracking_service import UsageTrackingService
+from app.utils.founder_email import send_founder_email
 from app.utils.session_auth import (
     clear_session_cookie,
     create_session_token,
@@ -27,6 +28,7 @@ async def _user_response(session: AsyncSession, user_id: int, org_id: int, email
         full_name=user.full_name if user else None,
         organization_id=org_id,
         organization_name=org_name,
+        role=(user.role if user and user.role else "owner"),
     )
 
 
@@ -54,6 +56,15 @@ async def register(body: RegisterRequest, response: Response, db: AsyncSession =
             "organization_id": user.organization_id,
             "company_name": body.company_name.strip(),
         },
+    )
+    send_founder_email(
+        subject=f"[CommerceFlow] New signup — {body.company_name.strip()}",
+        body=(
+            f"Email: {user.email}\n"
+            f"Company: {body.company_name.strip()}\n"
+            f"Organization ID: {user.organization_id}\n"
+            f"Name: {body.full_name or '(not provided)'}"
+        ),
     )
     return await _user_response(db, user.id, user.organization_id, user.email)
 

@@ -30,8 +30,9 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             Download Enterprise Workbook (.xlsx)
           </button>
+          <button type="button" class="btn-secondary" onclick="CF.exportExecutivePdf()">Download Executive PDF</button>
           <a href="/dashboard" class="btn-secondary btn-export-back">← Back to Executive Overview</a>
-          <p class="export-hero-hint">5 formatted sheets · Executive summary · Profit leakage · Export only after Run Your Analysis</p>
+          <p class="export-hero-hint">5 formatted sheets · PDF summary · Weekly email schedule below · Export only after Run Your Analysis</p>
         </div>
       </div>
       <div class="export-hero-visual" aria-hidden="true">
@@ -57,6 +58,14 @@
   </section>
 
   <section class="export-meta-strip">
+    <div class="export-meta-item">
+      <span class="export-meta-label">Weekly email</span>
+      <span class="export-meta-value">
+        <input type="email" id="schedule-email" class="input-select" placeholder="you@company.com" style="max-width:14rem">
+        <button type="button" class="btn-toolbar ml-2" onclick="CF.saveReportSchedule()">Save</button>
+      </span>
+    </div>
+    <div class="export-meta-divider"></div>
     <div class="export-meta-item">
       <span class="export-meta-label">Last generated</span>
       <span class="export-meta-value" id="export-last-generated">—</span>

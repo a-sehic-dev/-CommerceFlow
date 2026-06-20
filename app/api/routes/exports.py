@@ -84,6 +84,25 @@ async def export_report(report_type: str, body: ExportRequest, db: AsyncSession 
         job = await export_jobs.create(report_type, body.format)
         return {"success": True, "async": True, "job": job.to_dict()}
 
+    if report_type == "executive_pdf" or (report_type == "enterprise" and body.format == "pdf"):
+        from app.services.analytics_snapshot_service import AnalyticsSnapshotService
+        from app.services.pdf_export_service import build_executive_pdf
+
+        unified = await AnalyticsSnapshotService(db).get_current(rebuild_if_missing=True)
+        if not unified:
+            raise HTTPException(422, detail="Run Your Analysis before exporting PDF.")
+        metrics = unified.get("metrics") or {}
+        content, filename = build_executive_pdf(
+            company_name="CommerceFlow Workspace",
+            metrics=metrics,
+            analysis_id=unified.get("analysis_id"),
+        )
+        return Response(
+            content=content,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     content, filename, content_type = await service.export_report(report_type, body.format)
     return Response(
         content=content,

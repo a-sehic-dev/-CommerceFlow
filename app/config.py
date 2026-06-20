@@ -63,6 +63,24 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_from_email: str | None = None
 
+    # Upload abuse protection (Faza 2)
+    upload_ip_limit: int = 20
+    upload_window_seconds: float = 3600.0
+    upload_cooldown_seconds: float = 5.0
+
+    # Public URL for OAuth callbacks (set on Render)
+    app_base_url: str = "http://127.0.0.1:8000"
+
+    # Shopify Partner app (Faza 3)
+    shopify_api_key: str | None = None
+    shopify_api_secret: str | None = None
+    shopify_scopes: str = "read_products,read_orders,read_inventory"
+    shopify_api_version: str = "2024-10"
+
+    # Team workspaces (Faza 3)
+    team_max_seats: int = 5
+    invite_token_ttl_hours: int = 72
+
     @field_validator("database_url", mode="before")
     @classmethod
     def _normalize_database_url(cls, value: str) -> str:

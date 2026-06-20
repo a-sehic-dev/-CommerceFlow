@@ -202,3 +202,38 @@ async def load_demo_company(company: str, db: AsyncSession = Depends(get_db)):
     except Exception as exc:
         await db.rollback()
         raise HTTPException(500, str(exc)) from exc
+
+
+@router.get("/backup-status")
+async def backup_status(key: str | None = Query(default=None)):
+    """Render Postgres backup guidance (founder-only)."""
+    verify_founder_key(key)
+    settings = get_settings()
+    on_postgres = is_postgres_url(settings.database_url)
+    return {
+        "database_backend": "postgresql" if on_postgres else "sqlite",
+        "automatic_backups": on_postgres,
+        "instructions": (
+            "Render PostgreSQL Basic+ includes daily backups (7-day retention). "
+            "Dashboard → your Postgres service → Backups. "
+            "For manual export: use pg_dump with the External Database URL."
+            if on_postgres
+            else "SQLite on ephemeral disk — migrate to PostgreSQL for durable backups."
+        ),
+        "smtp_configured": bool(settings.smtp_host),
+    }
+
+
+@router.post("/cron/weekly-reports")
+async def cron_weekly_reports(
+    key: str | None = Query(default=None),
+    force: bool = Query(default=False),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger scheduled weekly Excel emails (wire to Render Cron Job)."""
+    verify_founder_key(key)
+    from app.services.scheduled_report_service import ScheduledReportService
+
+    result = await ScheduledReportService(db).run_due_reports(force=force)
+    await db.commit()
+    return {"success": True, **result}

@@ -9,7 +9,7 @@ from fastapi.encoders import ENCODERS_BY_TYPE
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import admin, alerts, analytics, assistant, auth, exports, feedback, imports, pages, usage
+from app.api.routes import admin, alerts, analytics, assistant, auth, exports, feedback, imports, integrations, pages, reports_schedule, team, usage
 from app.config import ensure_directories, get_settings
 from app.middleware import usage_page_middleware
 from app.database import init_db
@@ -81,6 +81,9 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(assistant.router)
     app.include_router(imports.router)
+    app.include_router(integrations.router)
+    app.include_router(team.router)
+    app.include_router(reports_schedule.router)
     app.include_router(analytics.router)
     app.include_router(alerts.router)
     app.include_router(exports.router)
@@ -104,6 +107,8 @@ def create_app() -> FastAPI:
     @app.get("/api/health")
     async def health():
         from app.utils.app_timezone import APP_TZ_NAME, now_local
+        from app.utils.database_url import is_postgres_url
+        from app.utils.founder_email import smtp_configured
 
         return {
             "status": "ok",
@@ -112,6 +117,9 @@ def create_app() -> FastAPI:
             "founder": settings.founder_name,
             "timezone": APP_TZ_NAME,
             "server_time": now_local().isoformat(),
+            "database_backend": "postgresql" if is_postgres_url(settings.database_url) else "sqlite",
+            "smtp_configured": smtp_configured(),
+            "shopify_oauth_ready": bool(settings.shopify_api_key and settings.shopify_api_secret),
         }
 
     return app

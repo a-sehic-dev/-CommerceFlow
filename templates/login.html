@@ -104,15 +104,35 @@
       e.preventDefault();
       registerError.classList.add('hidden');
       const data = Object.fromEntries(new FormData(registerForm));
-      const res = await fetch('/api/auth/register', {
+      const params = new URLSearchParams(window.location.search);
+      const invite = params.get('invite');
+      const endpoint = invite ? '/api/team/accept-invite' : '/api/auth/register';
+      const payload = invite
+        ? {
+            invite_token: invite,
+            email: data.email,
+            password: data.password,
+            full_name: data.full_name || null,
+          }
+        : data;
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) return showError(registerError, body.detail || 'Registration failed.');
       window.location.href = '/dashboard';
     });
+
+    const inviteToken = new URLSearchParams(window.location.search).get('invite');
+    if (inviteToken) {
+      document.querySelector('.auth-tab[data-tab="register"]')?.click();
+      const companyField = registerForm.querySelector('[name="company_name"]')?.closest('.auth-label');
+      if (companyField) companyField.classList.add('hidden');
+      registerError.textContent = 'Complete your account to join the team workspace.';
+      registerError.classList.remove('hidden');
+    }
   </script>
 </body>
 </html>
