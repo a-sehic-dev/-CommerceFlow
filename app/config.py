@@ -81,6 +81,13 @@ class Settings(BaseSettings):
     team_max_seats: int = 5
     invite_token_ttl_hours: int = 72
 
+    # Stripe Billing (Faza 4)
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    stripe_price_pro: str | None = None
+    stripe_price_team: str | None = None
+    stripe_default_currency: str = "usd"
+
     @field_validator("database_url", mode="before")
     @classmethod
     def _normalize_database_url(cls, value: str) -> str:

@@ -16,4 +16,8 @@ class Organization(Base):
     name: Mapped[str] = mapped_column(String(256))
     slug: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     plan: Mapped[str] = mapped_column(String(32), default="starter")
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    stripe_price_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    stripe_subscription_status: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=naive_local_now)

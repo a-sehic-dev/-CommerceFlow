@@ -9,7 +9,7 @@ from fastapi.encoders import ENCODERS_BY_TYPE
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import admin, alerts, analytics, assistant, auth, exports, feedback, imports, integrations, pages, reports_schedule, team, usage
+from app.api.routes import admin, alerts, analytics, assistant, auth, billing, exports, feedback, imports, integrations, pages, reports_schedule, team, usage
 from app.config import ensure_directories, get_settings
 from app.middleware import usage_page_middleware
 from app.database import init_db
@@ -84,6 +84,7 @@ def create_app() -> FastAPI:
     app.include_router(integrations.router)
     app.include_router(team.router)
     app.include_router(reports_schedule.router)
+    app.include_router(billing.router)
     app.include_router(analytics.router)
     app.include_router(alerts.router)
     app.include_router(exports.router)

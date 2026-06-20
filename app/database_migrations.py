@@ -12,6 +12,7 @@ async def migrate_schema(conn: AsyncConnection, database_url: str) -> None:
     dialect = conn.dialect.name
     await _migrate_import_records(conn, dialect)
     await _migrate_org_columns(conn, dialect)
+    await _migrate_billing_columns(conn, dialect)
     await _migrate_user_roles(conn, dialect)
     await _migrate_active_analysis_config(conn, dialect)
     await _ensure_active_analysis_singleton(conn, dialect)
@@ -163,6 +164,41 @@ async def _migrate_org_columns(conn: AsyncConnection, dialect: str) -> None:
             sqlite_type="INTEGER",
             postgres_type="INTEGER",
         )
+
+
+async def _migrate_billing_columns(conn: AsyncConnection, dialect: str) -> None:
+    await _add_column_if_missing(
+        conn,
+        table="organizations",
+        dialect=dialect,
+        name="stripe_customer_id",
+        sqlite_type="VARCHAR(128)",
+        postgres_type="VARCHAR(128)",
+    )
+    await _add_column_if_missing(
+        conn,
+        table="organizations",
+        dialect=dialect,
+        name="stripe_subscription_id",
+        sqlite_type="VARCHAR(128)",
+        postgres_type="VARCHAR(128)",
+    )
+    await _add_column_if_missing(
+        conn,
+        table="organizations",
+        dialect=dialect,
+        name="stripe_price_id",
+        sqlite_type="VARCHAR(128)",
+        postgres_type="VARCHAR(128)",
+    )
+    await _add_column_if_missing(
+        conn,
+        table="organizations",
+        dialect=dialect,
+        name="stripe_subscription_status",
+        sqlite_type="VARCHAR(64)",
+        postgres_type="VARCHAR(64)",
+    )
 
 
 async def _needs_backfill(conn: AsyncConnection) -> bool:
