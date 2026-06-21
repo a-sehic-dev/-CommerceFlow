@@ -65,6 +65,10 @@ const CF = {
     if (location.pathname === '/reports') {
       CF.hydrateExportState();
     }
+    if (document.getElementById('billing-panel')) {
+      CF.loadBillingStatus();
+      CF.handleBillingQuery();
+    }
   },
 
   afterDemoReadyPageLoad() {
@@ -2708,6 +2712,65 @@ const CF = {
       CF.loadImportHistory();
     } catch (e) {
       CF.toast(CF.parseApiError(e).split('\n')[0] || 'WooCommerce sync failed.', 'error');
+    }
+  },
+
+  handleBillingQuery() {
+    const params = new URLSearchParams(location.search);
+    const billing = params.get('billing');
+    if (!billing) return;
+    if (billing === 'success') CF.toast('Subscription updated. Your plan will refresh in a moment.', 'success');
+    else if (billing === 'cancel') CF.toast('Checkout cancelled.', 'warning');
+    params.delete('billing');
+    const next = params.toString() ? `${location.pathname}?${params}` : location.pathname;
+    history.replaceState({}, '', next);
+    setTimeout(() => CF.loadBillingStatus(), 1500);
+  },
+
+  async loadBillingStatus() {
+    const planEl = document.getElementById('billing-plan-label');
+    const statusEl = document.getElementById('billing-status-label');
+    const btnPro = document.getElementById('btn-billing-pro');
+    const btnTeam = document.getElementById('btn-billing-team');
+    const btnPortal = document.getElementById('btn-billing-portal');
+    if (!planEl) return;
+    try {
+      const data = await CF.fetchJSON('/api/billing/status');
+      const plan = (data.plan || 'starter').toLowerCase();
+      const subStatus = data.stripe?.subscription_status;
+      planEl.textContent = plan;
+      statusEl.textContent = subStatus ? `Stripe: ${subStatus}` : 'Free workspace — upgrade anytime';
+      const isOwner = (data.role || '').toLowerCase() === 'owner';
+      if (btnPro) btnPro.classList.toggle('hidden', !isOwner || plan === 'pro' || plan === 'team');
+      if (btnTeam) btnTeam.classList.toggle('hidden', !isOwner || plan === 'team');
+      if (btnPortal) btnPortal.classList.toggle('hidden', !isOwner || !data.stripe?.customer_id);
+    } catch {
+      planEl.textContent = 'starter';
+      statusEl.textContent = 'Sign in as owner to manage billing';
+    }
+  },
+
+  async startBillingCheckout(plan) {
+    try {
+      const data = await CF.fetchJSON('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      });
+      if (data.url) window.location.href = data.url;
+      else CF.toast('Checkout URL missing.', 'error');
+    } catch (e) {
+      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Checkout failed.', 'error');
+    }
+  },
+
+  async openBillingPortal() {
+    try {
+      const data = await CF.fetchJSON('/api/billing/portal', { method: 'POST' });
+      if (data.url) window.location.href = data.url;
+      else CF.toast('Billing portal URL missing.', 'error');
+    } catch (e) {
+      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Billing portal failed.', 'error');
     }
   },
 };
