@@ -87,6 +87,31 @@ def plan_rank(plan: str | None) -> int:
     return PLAN_RANK.get(normalize_plan(plan), 0)
 
 
+def plan_features_list(plan: str | None) -> list[str]:
+    limits = get_plan_limits(plan)
+    features = [
+        "CSV & Excel upload with full analysis dashboard",
+        f"Up to {limits.max_seats} workspace seat{'s' if limits.max_seats != 1 else ''}",
+    ]
+    if limits.max_stores:
+        features.append(
+            f"Up to {limits.max_stores} live store{'s' if limits.max_stores != 1 else ''} (Shopify / WooCommerce)"
+        )
+    else:
+        features.append("Manual CSV/Excel imports (no live store sync)")
+    if limits.live_sync:
+        features.append("Automated Shopify & WooCommerce sync")
+    if limits.pdf_export:
+        features.append("Executive PDF export")
+    if limits.weekly_email:
+        features.append("Scheduled weekly Excel report by email")
+    if limits.team_invites:
+        features.append("Team invites with Owner / Analyst / Viewer roles")
+    if limits.slug == "ultra":
+        features.append("Multi-brand / multi-store operations in one workspace")
+    return features
+
+
 def plan_limits_payload(plan: str | None) -> dict:
     limits = get_plan_limits(plan)
     return {
@@ -100,4 +125,5 @@ def plan_limits_payload(plan: str | None) -> dict:
         "weekly_email": limits.weekly_email,
         "pdf_export": limits.pdf_export,
         "summary": limits.summary,
+        "features": plan_features_list(plan),
     }

@@ -98,9 +98,9 @@
           </p>
           <p class="text-xs text-slate-500 mb-2" id="billing-status-label">{% if billing_detail %}{{ billing_detail }}{% endif %}</p>
           <p class="text-xs text-slate-500 mb-2" id="billing-limits-label">{% if billing_summary %}{{ billing_summary }}{% endif %}</p>
-          <button type="button" class="btn-toolbar w-full mb-1{% if not billing_show_pro %} hidden{% endif %}" id="btn-billing-pro" onclick="CF.startBillingCheckout('pro')">Pro — $29/mo</button>
-          <button type="button" class="btn-toolbar w-full mb-1{% if not billing_show_team %} hidden{% endif %}" id="btn-billing-team" onclick="CF.startBillingCheckout('team')">Team — $79/mo</button>
-          <button type="button" class="btn-toolbar w-full mb-1{% if not billing_show_ultra %} hidden{% endif %}" id="btn-billing-ultra" onclick="CF.startBillingCheckout('ultra')">Ultra — $129/mo</button>
+          <button type="button" class="btn-toolbar w-full mb-1{% if not billing_show_pro %} hidden{% endif %}" id="btn-billing-pro" onclick="CF.openBillingModal('pro')">Pro — $29/mo</button>
+          <button type="button" class="btn-toolbar w-full mb-1{% if not billing_show_team %} hidden{% endif %}" id="btn-billing-team" onclick="CF.openBillingModal('team')">Team — $79/mo</button>
+          <button type="button" class="btn-toolbar w-full mb-1{% if not billing_show_ultra %} hidden{% endif %}" id="btn-billing-ultra" onclick="CF.openBillingModal('ultra')">Ultra — $129/mo</button>
           <button type="button" class="btn-sidebar-ghost w-full hidden" id="btn-billing-portal" onclick="CF.openBillingPortal()">Manage subscription</button>
         </div>
         <button type="button" class="btn-sidebar-ghost" onclick="CF.logout()">Sign out</button>
@@ -329,6 +329,30 @@
     </div>
   </div>
 
+  <div id="billing-modal" class="analysis-modal" style="display:none" aria-hidden="true">
+    <div class="analysis-modal-backdrop" onclick="CF.closeBillingModal()"></div>
+    <div class="analysis-modal-dialog" role="dialog" aria-labelledby="billing-modal-title">
+      <div class="analysis-modal-header">
+        <div>
+          <p class="analysis-modal-eyebrow">Upgrade workspace</p>
+          <h2 id="billing-modal-title">CommerceFlow Pro</h2>
+          <p class="analysis-modal-sub" id="billing-modal-price">$29/mo</p>
+        </div>
+        <button type="button" class="icon-btn" onclick="CF.closeBillingModal()" aria-label="Close">×</button>
+      </div>
+      <div class="analysis-modal-body">
+        <p class="text-sm text-slate-400 mb-3" id="billing-modal-summary"></p>
+        <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">What you get</p>
+        <ul id="billing-modal-features" class="billing-plan-features text-sm text-slate-300 space-y-2 mb-2"></ul>
+        <p class="text-xs text-slate-500">Secure payment via Stripe. Cancel anytime from Manage subscription.</p>
+      </div>
+      <div class="analysis-modal-footer">
+        <button type="button" class="btn-secondary" onclick="CF.closeBillingModal()">Not now</button>
+        <button type="button" class="btn-primary" id="btn-billing-confirm" onclick="CF.confirmBillingCheckout()">Pay now →</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" class="toast-container"></div>
 
   <button type="button" id="feedback-fab" class="feedback-fab" onclick="CF.openFeedbackModal()" aria-label="Share feedback" title="Share feedback">
@@ -336,7 +360,7 @@
     <span>Feedback</span>
   </button>
 
-  <script src="/static/js/app.js?v=1.1.1"></script>
+  <script src="/static/js/app.js?v=1.1.2"></script>
   {% block scripts %}{% endblock %}
   <script>document.addEventListener('DOMContentLoaded', () => CF.init());</script>
 </body>

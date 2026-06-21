@@ -3437,3 +3437,10 @@
   font-size: 0.8125rem;
 }
 .btn-sidebar-ghost:hover { color: #e2e8f0; border-color: rgba(148, 163, 184, 0.35); }
+
+.billing-plan-features {
+  margin: 0;
+  padding-left: 1.1rem;
+  list-style: disc;
+}
+.billing-plan-features li { margin: 0.15rem 0; }

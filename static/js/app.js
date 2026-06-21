@@ -28,6 +28,8 @@ const CF = {
     lastJob: null,
     latestWorkbook: null,
   },
+  billingCheckoutPlan: null,
+  billingPlansCache: null,
 
   isFounderAdminPage() {
     return location.pathname.startsWith('/admin');
@@ -40,9 +42,10 @@ const CF = {
         const deleteImport = document.getElementById('delete-import-modal');
         if (deleteImport?.style.display === 'flex') CF.closeDeleteImportModal();
         else {
-          if (document.getElementById('clear-datasets-modal')?.style.display === 'flex') CF.closeClearDatasetsModal();
+          if (document.getElementById('billing-modal')?.style.display === 'flex') CF.closeBillingModal();
+          else if (document.getElementById('clear-datasets-modal')?.style.display === 'flex') CF.closeClearDatasetsModal();
           else if (document.getElementById('feedback-modal')?.style.display === 'flex') CF.closeFeedbackModal();
-          if (document.getElementById('reset-analysis-modal')?.style.display === 'flex') CF.closeResetAnalysisModal();
+          else if (document.getElementById('reset-analysis-modal')?.style.display === 'flex') CF.closeResetAnalysisModal();
           else {
             const picker = document.getElementById('picker-modal');
             if (picker?.style.display === 'flex') CF.closePickerModal();
@@ -2774,17 +2777,82 @@ const CF = {
   },
 
   async startBillingCheckout(plan) {
+    const slug = (plan || CF.billingCheckoutPlan || '').toLowerCase();
+    if (!slug) return CF.toast('Select a plan first.', 'warning');
+    const btn = document.getElementById('btn-billing-confirm');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Opening Stripe…';
+    }
     try {
       const data = await CF.fetchJSON('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan: slug }),
       });
       if (data.url) window.location.href = data.url;
       else CF.toast('Checkout URL missing.', 'error');
     } catch (e) {
       CF.toast(CF.parseApiError(e).split('\n')[0] || 'Checkout failed.', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Pay now →';
+      }
     }
+  },
+
+  async _loadBillingPlans() {
+    if (CF.billingPlansCache) return CF.billingPlansCache;
+    const data = await CF.fetchJSON('/api/billing/plans');
+    CF.billingPlansCache = data.plans || [];
+    return CF.billingPlansCache;
+  },
+
+  async openBillingModal(plan) {
+    const slug = (plan || '').toLowerCase();
+    if (!slug) return;
+    const modal = document.getElementById('billing-modal');
+    if (!modal) return CF.startBillingCheckout(slug);
+
+    try {
+      const plans = await CF._loadBillingPlans();
+      const selected = plans.find((p) => p.slug === slug);
+      if (!selected) return CF.toast('Plan details not found.', 'error');
+
+      CF.billingCheckoutPlan = slug;
+      const title = document.getElementById('billing-modal-title');
+      const price = document.getElementById('billing-modal-price');
+      const summary = document.getElementById('billing-modal-summary');
+      const list = document.getElementById('billing-modal-features');
+      if (title) title.textContent = `CommerceFlow ${selected.label}`;
+      if (price) price.textContent = selected.price_hint || '';
+      if (summary) summary.textContent = selected.summary || '';
+      if (list) {
+        list.innerHTML = '';
+        (selected.features || []).forEach((line) => {
+          const li = document.createElement('li');
+          li.textContent = line;
+          list.appendChild(li);
+        });
+      }
+      modal.style.display = 'flex';
+      modal.setAttribute('aria-hidden', 'false');
+    } catch (e) {
+      CF.toast(CF.parseApiError(e).split('\n')[0] || 'Could not load plan details.', 'error');
+    }
+  },
+
+  closeBillingModal() {
+    const modal = document.getElementById('billing-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+    CF.billingCheckoutPlan = null;
+  },
+
+  confirmBillingCheckout() {
+    return CF.startBillingCheckout(CF.billingCheckoutPlan);
   },
 
   async openBillingPortal() {

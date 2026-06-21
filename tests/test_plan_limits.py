@@ -26,3 +26,11 @@ def test_starter_is_csv_only_tier():
     assert starter.max_stores == 0
     assert starter.pdf_export is False
     assert starter.weekly_email is False
+
+
+def test_plan_features_list_includes_pdf_for_pro():
+    from app.utils.plan_limits import plan_features_list
+
+    features = plan_features_list("pro")
+    assert len(features) >= 4
+    assert any("PDF" in line for line in features)
