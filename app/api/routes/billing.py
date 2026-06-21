@@ -14,6 +14,7 @@ from app.services.team_service import TeamService
 from app.utils.plan_limits import PLAN_LIMITS, plan_limits_payload
 from app.utils.permissions import ROLE_OWNER, require_role
 from app.utils.session_auth import require_session
+from app.utils.stripe_price import validate_stripe_price_id
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 
@@ -69,10 +70,10 @@ async def start_checkout(body: CheckoutRequest, request: Request, db: AsyncSessi
     }
     if plan not in price_map:
         raise HTTPException(400, "Unknown plan. Use 'pro', 'team', or 'ultra'.")
-    price_id = price_map[plan]
-
-    if not price_id:
-        raise HTTPException(503, "Stripe price id is not configured for this plan.")
+    try:
+        price_id = validate_stripe_price_id(price_map[plan], plan_label=plan)
+    except ValueError as exc:
+        raise HTTPException(503, detail=str(exc)) from exc
 
     success = f"{settings.app_base_url}/dashboard?billing=success"
     cancel = f"{settings.app_base_url}/dashboard?billing=cancel"
