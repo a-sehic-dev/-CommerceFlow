@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,6 +6,8 @@ from app.database import get_db
 from app.schemas.analytics import ExportJobRequest, ExportRequest
 from app.services.export_job_service import export_jobs
 from app.services.export_service import ExportService
+from app.services.plan_service import PlanService
+from app.utils.session_auth import get_session_from_request
 
 router = APIRouter(prefix="/api/exports", tags=["exports"])
 
@@ -76,7 +78,7 @@ async def download_export_job(job_id: str):
 
 
 @router.post("/{report_type}")
-async def export_report(report_type: str, body: ExportRequest, db: AsyncSession = Depends(get_db)):
+async def export_report(report_type: str, body: ExportRequest, request: Request, db: AsyncSession = Depends(get_db)):
     """Synchronous export for smaller datasets; prefer /jobs for enterprise workbook."""
     service = ExportService(db)
     meta = await service.get_export_meta()
@@ -85,6 +87,9 @@ async def export_report(report_type: str, body: ExportRequest, db: AsyncSession 
         return {"success": True, "async": True, "job": job.to_dict()}
 
     if report_type == "executive_pdf" or (report_type == "enterprise" and body.format == "pdf"):
+        auth = get_session_from_request(request)
+        if auth:
+            await PlanService(db).ensure_pdf_export(auth.organization_id)
         from app.services.analytics_snapshot_service import AnalyticsSnapshotService
         from app.services.pdf_export_service import build_executive_pdf
 

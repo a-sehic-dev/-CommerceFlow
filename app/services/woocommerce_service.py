@@ -7,13 +7,14 @@ from urllib.parse import urljoin
 
 import httpx
 import pandas as pd
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.store_connection import StoreConnection
 from app.services.import_runner import import_runner
 from app.services.import_service import ImportService
+from app.services.plan_service import PlanService
+from app.services.store_connection_service import StoreConnectionService, store_slug
 from app.utils.app_timezone import naive_local_now
 from app.utils.token_vault import decrypt_secret, encrypt_secret
 
@@ -31,15 +32,15 @@ class WooCommerceService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.settings = get_settings()
+        self.stores = StoreConnectionService(session)
+        self.plans = PlanService(session)
+
+    async def list_connections(self, organization_id: int) -> list[StoreConnection]:
+        return await self.stores.list_connections(organization_id, provider="woocommerce")
 
     async def get_connection(self, organization_id: int) -> StoreConnection | None:
-        result = await self.session.execute(
-            select(StoreConnection).where(
-                StoreConnection.organization_id == organization_id,
-                StoreConnection.provider == "woocommerce",
-            )
-        )
-        return result.scalar_one_or_none()
+        connections = await self.list_connections(organization_id)
+        return connections[0] if connections else None
 
     async def connect(
         self,
@@ -52,14 +53,15 @@ class WooCommerceService:
         if not consumer_key.strip() or not consumer_secret.strip():
             raise ValueError("WooCommerce consumer key and secret are required.")
 
-        conn = await self.get_connection(organization_id)
-        if conn:
-            conn.store_domain = base
-            conn.api_key_encrypted = encrypt_secret(consumer_key.strip())
-            conn.api_secret_encrypted = encrypt_secret(consumer_secret.strip())
-            conn.status = "connected"
-            conn.updated_at = naive_local_now()
-        else:
+        conn = await self.stores.get_by_domain(organization_id, "woocommerce", base)
+        if not conn:
+            used = await self.stores.connected_count(organization_id)
+            limits = await self.plans.ensure_live_sync(organization_id)
+            if used >= limits.max_stores:
+                raise ValueError(
+                    f"Store limit reached ({limits.max_stores} on {limits.label}). "
+                    "Upgrade to Ultra for multiple stores."
+                )
             conn = StoreConnection(
                 organization_id=organization_id,
                 provider="woocommerce",
@@ -69,6 +71,11 @@ class WooCommerceService:
                 status="connected",
             )
             self.session.add(conn)
+        else:
+            conn.api_key_encrypted = encrypt_secret(consumer_key.strip())
+            conn.api_secret_encrypted = encrypt_secret(consumer_secret.strip())
+            conn.status = "connected"
+            conn.updated_at = naive_local_now()
         await self.session.flush()
         return conn
 
@@ -81,21 +88,16 @@ class WooCommerceService:
             resp.raise_for_status()
             return resp.json()
 
-    async def sync_store(self, organization_id: int) -> dict:
-        conn = await self.get_connection(organization_id)
-        if not conn or not conn.api_key_encrypted:
-            raise ValueError("Connect WooCommerce before syncing.")
-
+    async def _sync_connection(self, conn: StoreConnection, organization_id: int) -> list[dict]:
         products = await self._api_get(conn, "products", {"per_page": 100})
         orders = await self._api_get(conn, "orders", {"per_page": 100, "status": "any"})
 
         product_rows = []
         for product in products if isinstance(products, list) else []:
-            sku = product.get("sku")
             product_rows.append(
                 {
                     "Name": product.get("name"),
-                    "SKU": sku,
+                    "SKU": product.get("sku"),
                     "Regular price": product.get("regular_price"),
                     "Categories": ", ".join(c.get("name", "") for c in product.get("categories", [])),
                 }
@@ -125,13 +127,14 @@ class WooCommerceService:
                 }
             )
 
+        slug = store_slug(conn.store_domain)
         settings = self.settings
         settings.upload_dir.mkdir(parents=True, exist_ok=True)
         results = []
         for label, rows, dataset_type in (
-            ("woocommerce_products.xlsx", product_rows, "products"),
-            ("woocommerce_sales.xlsx", sales_rows, "sales"),
-            ("woocommerce_inventory.xlsx", inventory_rows, "inventory"),
+            (f"woocommerce_{slug}_products.xlsx", product_rows, "products"),
+            (f"woocommerce_{slug}_sales.xlsx", sales_rows, "sales"),
+            (f"woocommerce_{slug}_inventory.xlsx", inventory_rows, "inventory"),
         ):
             if not rows:
                 continue
@@ -148,8 +151,30 @@ class WooCommerceService:
             await self.session.commit()
             await import_runner.run_import(record.id, path, "woocommerce", forced_type=dataset_type)
             record = await service.get_import(record.id)
-            results.append({"filename": label, "status": record.status if record else "unknown"})
+            results.append(
+                {
+                    "filename": label,
+                    "status": record.status if record else "unknown",
+                    "store": conn.store_domain,
+                }
+            )
 
         conn.last_sync_at = naive_local_now()
         await self.session.flush()
-        return {"synced": results, "store": conn.store_domain}
+        return results
+
+    async def sync_store(self, organization_id: int) -> dict:
+        await self.plans.ensure_live_sync(organization_id)
+        connections = [
+            c for c in await self.list_connections(organization_id) if c.api_key_encrypted
+        ]
+        if not connections:
+            raise ValueError("Connect WooCommerce before syncing.")
+
+        all_synced: list[dict] = []
+        for conn in connections:
+            all_synced.extend(await self._sync_connection(conn, organization_id))
+        return {
+            "synced": all_synced,
+            "stores": [c.store_domain for c in connections],
+        }

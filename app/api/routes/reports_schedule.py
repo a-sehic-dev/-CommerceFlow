@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
+from app.services.plan_service import PlanService
 from app.services.scheduled_report_service import ScheduledReportService
 from app.utils.permissions import ROLE_ANALYST, require_role
 from app.utils.session_auth import require_session
@@ -36,6 +38,7 @@ async def set_report_schedule(request: Request, body: ScheduleRequest, db: Async
     auth = require_session(request)
     user = await AuthService(db).get_user_by_id(auth.user_id)
     require_role(user.role if user else None, ROLE_ANALYST)
+    await PlanService(db).ensure_weekly_email(auth.organization_id)
     try:
         schedule = await ScheduledReportService(db).upsert_schedule(
             organization_id=auth.organization_id,

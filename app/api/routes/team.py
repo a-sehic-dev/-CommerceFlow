@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.database import get_db
 from app.schemas.team import AcceptInviteRequest
 from app.services.auth_service import AuthService
+from app.services.plan_service import PlanService
 from app.services.team_service import TeamService
 from app.utils.permissions import ROLE_OWNER, require_role
 from app.utils.session_auth import create_session_token, require_session, set_session_cookie
@@ -22,12 +22,13 @@ class InviteRequest(BaseModel):
 async def list_members(request: Request, db: AsyncSession = Depends(get_db)):
     auth = require_session(request)
     service = TeamService(db)
-    settings = get_settings()
+    limits = await PlanService(db).limits_payload(auth.organization_id)
     return {
         "members": await service.list_members(auth.organization_id),
         "pending_invites": await service.list_pending_invites(auth.organization_id),
-        "seat_limit": settings.team_max_seats,
+        "seat_limit": await service.seat_limit(auth.organization_id),
         "seats_used": await service.seat_count(auth.organization_id),
+        "plan": limits,
     }
 
 

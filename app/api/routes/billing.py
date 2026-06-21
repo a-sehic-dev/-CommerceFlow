@@ -8,7 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.services.auth_service import AuthService
+from app.services.plan_service import PlanService
 from app.services.stripe_service import StripeService
+from app.services.team_service import TeamService
+from app.utils.plan_limits import PLAN_LIMITS, plan_limits_payload
 from app.utils.permissions import ROLE_OWNER, require_role
 from app.utils.session_auth import require_session
 
@@ -16,7 +19,12 @@ router = APIRouter(prefix="/api/billing", tags=["billing"])
 
 
 class CheckoutRequest(BaseModel):
-    plan: str = Field(..., min_length=2, max_length=16)  # pro | team
+    plan: str = Field(..., min_length=2, max_length=16)  # pro | team | ultra
+
+
+@router.get("/plans")
+async def list_plans():
+    return {"plans": [plan_limits_payload(slug) for slug in PLAN_LIMITS]}
 
 
 @router.get("/status")
@@ -24,8 +32,15 @@ async def billing_status(request: Request, db: AsyncSession = Depends(get_db)):
     auth = require_session(request)
     user = await AuthService(db).get_user_by_id(auth.user_id)
     org = await StripeService(db).get_org(auth.organization_id)
+    plan_svc = PlanService(db)
+    team_svc = TeamService(db)
     return {
         "plan": org.plan,
+        "limits": await plan_svc.limits_payload(auth.organization_id),
+        "usage": {
+            "seats_used": await team_svc.seat_count(auth.organization_id),
+            "stores_used": await plan_svc.connected_store_count(auth.organization_id),
+        },
         "role": user.role if user else None,
         "stripe": {
             "customer_id": org.stripe_customer_id,
@@ -47,12 +62,14 @@ async def start_checkout(body: CheckoutRequest, request: Request, db: AsyncSessi
     org = await service.get_org(auth.organization_id)
 
     plan = body.plan.strip().lower()
-    if plan == "team":
-        price_id = settings.stripe_price_team
-    elif plan == "pro":
-        price_id = settings.stripe_price_pro
-    else:
-        raise HTTPException(400, "Unknown plan. Use 'pro' or 'team'.")
+    price_map = {
+        "pro": settings.stripe_price_pro,
+        "team": settings.stripe_price_team,
+        "ultra": settings.stripe_price_ultra,
+    }
+    if plan not in price_map:
+        raise HTTPException(400, "Unknown plan. Use 'pro', 'team', or 'ultra'.")
+    price_id = price_map[plan]
 
     if not price_id:
         raise HTTPException(503, "Stripe price id is not configured for this plan.")

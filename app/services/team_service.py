@@ -13,6 +13,7 @@ from app.models.organization import Organization
 from app.models.team_invite import TeamInvite
 from app.models.user import User
 from app.services.auth_service import validate_email
+from app.services.plan_service import PlanService
 from app.utils.app_timezone import naive_local_now
 from app.utils.founder_email import send_email
 from app.utils.permissions import ROLE_ANALYST, ROLE_OWNER, normalize_role
@@ -22,6 +23,10 @@ class TeamService:
     def __init__(self, session: AsyncSession):
         self.session = session
         self.settings = get_settings()
+        self.plans = PlanService(session)
+
+    async def seat_limit(self, organization_id: int) -> int:
+        return (await self.plans.get_limits(organization_id)).max_seats
 
     async def seat_count(self, organization_id: int) -> int:
         members = await self.session.scalar(
@@ -86,8 +91,10 @@ class TeamService:
         if role_norm == ROLE_OWNER:
             raise ValueError("Cannot invite another owner. Transfer ownership is not automated yet.")
 
-        if await self.seat_count(organization_id) >= self.settings.team_max_seats:
-            raise ValueError(f"Seat limit reached ({self.settings.team_max_seats} per organization).")
+        await self.plans.ensure_team_invites(organization_id)
+        seat_cap = await self.seat_limit(organization_id)
+        if await self.seat_count(organization_id) >= seat_cap:
+            raise ValueError(f"Seat limit reached ({seat_cap} on your plan). Upgrade for more seats.")
 
         existing_user = await self.session.scalar(
             select(User).where(User.email == email_norm, User.organization_id == organization_id)
@@ -155,6 +162,10 @@ class TeamService:
             raise ValueError("Invite link has expired.")
         if invite.email != email_norm:
             raise ValueError("Use the same email address that received the invite.")
+
+        seat_cap = await TeamService(self.session).seat_limit(invite.organization_id)
+        if await TeamService(self.session).seat_count(invite.organization_id) >= seat_cap:
+            raise ValueError("This workspace has reached its seat limit. Ask the owner to upgrade.")
 
         existing = await AuthService(self.session).get_user_by_email(email_norm)
         if existing:

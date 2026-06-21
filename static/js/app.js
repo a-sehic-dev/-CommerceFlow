@@ -2656,9 +2656,19 @@ const CF = {
     try {
       const data = await CF.fetchJSON('/api/integrations/status');
       const parts = [];
-      if (data.shopify?.connected) parts.push(`Shopify: ${data.shopify.store}`);
-      if (data.woocommerce?.connected) parts.push(`WooCommerce: ${data.woocommerce.store}`);
-      el.textContent = parts.length ? parts.join(' · ') : 'No live store connected yet.';
+      const shopifyStores = data.shopify?.stores || [];
+      const wooStores = data.woocommerce?.stores || [];
+      shopifyStores.forEach((s) => parts.push(`Shopify: ${s.store}`));
+      wooStores.forEach((s) => parts.push(`WooCommerce: ${s.store}`));
+      const limit = data.stores_limit ?? 0;
+      const used = data.stores_used ?? 0;
+      if (!limit) {
+        el.textContent = 'Live store sync requires Pro or higher. Upgrade in the sidebar.';
+        return;
+      }
+      el.textContent = parts.length
+        ? `${parts.join(' · ')} (${used}/${limit} stores)`
+        : `No live store connected yet (${used}/${limit} stores).`;
     } catch {
       el.textContent = 'Sign in to connect Shopify or WooCommerce.';
     }
@@ -2730,23 +2740,36 @@ const CF = {
   async loadBillingStatus() {
     const planEl = document.getElementById('billing-plan-label');
     const statusEl = document.getElementById('billing-status-label');
+    const limitsEl = document.getElementById('billing-limits-label');
     const btnPro = document.getElementById('btn-billing-pro');
     const btnTeam = document.getElementById('btn-billing-team');
+    const btnUltra = document.getElementById('btn-billing-ultra');
     const btnPortal = document.getElementById('btn-billing-portal');
     if (!planEl) return;
     try {
       const data = await CF.fetchJSON('/api/billing/status');
       const plan = (data.plan || 'starter').toLowerCase();
+      const limits = data.limits || {};
+      const usage = data.usage || {};
       const subStatus = data.stripe?.subscription_status;
-      planEl.textContent = plan;
-      statusEl.textContent = subStatus ? `Stripe: ${subStatus}` : 'Free workspace — upgrade anytime';
+      planEl.textContent = limits.label || plan;
+      statusEl.textContent = subStatus
+        ? `Stripe: ${subStatus}`
+        : `${limits.price_hint || ''} · ${usage.seats_used || 1}/${limits.max_seats || 1} seats`;
+      if (limitsEl) {
+        limitsEl.textContent = limits.summary || '';
+      }
       const isOwner = (data.role || '').toLowerCase() === 'owner';
-      if (btnPro) btnPro.classList.toggle('hidden', !isOwner || plan === 'pro' || plan === 'team');
-      if (btnTeam) btnTeam.classList.toggle('hidden', !isOwner || plan === 'team');
+      const rank = { starter: 0, pro: 1, team: 2, ultra: 3 };
+      const current = rank[plan] ?? 0;
+      if (btnPro) btnPro.classList.toggle('hidden', !isOwner || current >= 1);
+      if (btnTeam) btnTeam.classList.toggle('hidden', !isOwner || current >= 2);
+      if (btnUltra) btnUltra.classList.toggle('hidden', !isOwner || current >= 3);
       if (btnPortal) btnPortal.classList.toggle('hidden', !isOwner || !data.stripe?.customer_id);
     } catch {
-      planEl.textContent = 'starter';
+      planEl.textContent = 'Starter';
       statusEl.textContent = 'Sign in as owner to manage billing';
+      if (limitsEl) limitsEl.textContent = '';
     }
   },
 

@@ -80,7 +80,10 @@ class StripeService:
         # map known prices to plan slug
         pro = self.settings.stripe_price_pro
         team = self.settings.stripe_price_team
-        if team and price_id == team:
+        ultra = self.settings.stripe_price_ultra
+        if ultra and price_id == ultra:
+            org.plan = "ultra"
+        elif team and price_id == team:
             org.plan = "team"
         elif pro and price_id == pro:
             org.plan = "pro"

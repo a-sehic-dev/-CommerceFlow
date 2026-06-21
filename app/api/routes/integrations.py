@@ -5,8 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.services.auth_service import AuthService
-from app.services.shopify_service import ShopifyService
-from app.services.woocommerce_service import WooCommerceService
+from app.services.plan_service import PlanService
+from app.services.store_connection_service import StoreConnectionService
+from app.services.shopify_service import ShopifyService, normalize_shop_domain
+from app.services.woocommerce_service import WooCommerceService, normalize_store_url
 from app.utils.oauth_state import create_oauth_state, parse_oauth_state
 from app.utils.permissions import ROLE_ANALYST, require_role
 from app.utils.session_auth import require_session
@@ -23,18 +25,34 @@ class WooConnectRequest(BaseModel):
 @router.get("/status")
 async def integration_status(request: Request, db: AsyncSession = Depends(get_db)):
     auth = require_session(request)
-    shopify = await ShopifyService(db).get_connection(auth.organization_id)
-    woo = await WooCommerceService(db).get_connection(auth.organization_id)
+    plan_svc = PlanService(db)
+    limits = await plan_svc.limits_payload(auth.organization_id)
+    shopify_conns = await ShopifyService(db).list_connections(auth.organization_id)
+    woo_conns = await WooCommerceService(db).list_connections(auth.organization_id)
+    stores_used = await plan_svc.connected_store_count(auth.organization_id)
     return {
+        "plan": limits,
+        "stores_used": stores_used,
+        "stores_limit": limits["max_stores"],
         "shopify": {
-            "connected": bool(shopify and shopify.status == "connected"),
-            "store": shopify.store_domain if shopify else None,
-            "last_sync_at": shopify.last_sync_at.isoformat() if shopify and shopify.last_sync_at else None,
+            "connected": bool(shopify_conns),
+            "stores": [
+                {
+                    "store": c.store_domain,
+                    "last_sync_at": c.last_sync_at.isoformat() if c.last_sync_at else None,
+                }
+                for c in shopify_conns
+            ],
         },
         "woocommerce": {
-            "connected": bool(woo and woo.status == "connected"),
-            "store": woo.store_domain if woo else None,
-            "last_sync_at": woo.last_sync_at.isoformat() if woo and woo.last_sync_at else None,
+            "connected": bool(woo_conns),
+            "stores": [
+                {
+                    "store": c.store_domain,
+                    "last_sync_at": c.last_sync_at.isoformat() if c.last_sync_at else None,
+                }
+                for c in woo_conns
+            ],
         },
     }
 
@@ -48,6 +66,10 @@ async def shopify_install(
     auth = require_session(request)
     user = await AuthService(db).get_user_by_id(auth.user_id)
     require_role(user.role if user else None, ROLE_ANALYST)
+    domain = normalize_shop_domain(shop)
+    stores = StoreConnectionService(db)
+    if not await stores.get_by_domain(auth.organization_id, "shopify", domain):
+        await PlanService(db).ensure_can_add_store(auth.organization_id)
     state = create_oauth_state(organization_id=auth.organization_id, user_id=auth.user_id)
     url = ShopifyService(db).authorize_url(shop, state)
     return {"authorize_url": url}
@@ -95,6 +117,10 @@ async def woocommerce_connect(
     auth = require_session(request)
     user = await AuthService(db).get_user_by_id(auth.user_id)
     require_role(user.role if user else None, ROLE_ANALYST)
+    base = normalize_store_url(body.store_url)
+    stores = StoreConnectionService(db)
+    if not await stores.get_by_domain(auth.organization_id, "woocommerce", base):
+        await PlanService(db).ensure_can_add_store(auth.organization_id)
     try:
         conn = await WooCommerceService(db).connect(
             auth.organization_id,

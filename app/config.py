@@ -86,6 +86,7 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str | None = None
     stripe_price_pro: str | None = None
     stripe_price_team: str | None = None
+    stripe_price_ultra: str | None = None
     stripe_default_currency: str = "usd"
 
     @field_validator("database_url", mode="before")

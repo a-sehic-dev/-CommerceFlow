@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.organization import Organization
 from app.models.scheduled_report import ScheduledReport
 from app.services.export_service import ExportService
+from app.services.plan_service import PlanService
 from app.utils.app_timezone import naive_local_now
 from app.utils.founder_email import send_email
 
@@ -67,6 +68,10 @@ class ScheduledReportService:
         skipped = []
 
         for schedule in schedules:
+            limits = await PlanService(self.session).get_limits(schedule.organization_id)
+            if not limits.weekly_email:
+                skipped.append({"organization_id": schedule.organization_id, "reason": "plan_no_weekly_email"})
+                continue
             if not force and schedule.day_of_week != weekday:
                 skipped.append({"organization_id": schedule.organization_id, "reason": "wrong_day"})
                 continue

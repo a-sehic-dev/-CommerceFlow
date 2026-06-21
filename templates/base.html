@@ -95,8 +95,10 @@
           <p class="sidebar-auth-label">Plan</p>
           <p class="sidebar-billing-plan text-sm text-slate-300 capitalize" id="billing-plan-label">—</p>
           <p class="text-xs text-slate-500 mb-2" id="billing-status-label"></p>
-          <button type="button" class="btn-toolbar w-full mb-1 hidden" id="btn-billing-pro" onclick="CF.startBillingCheckout('pro')">Upgrade to Pro</button>
-          <button type="button" class="btn-toolbar w-full mb-1 hidden" id="btn-billing-team" onclick="CF.startBillingCheckout('team')">Upgrade to Team</button>
+          <p class="text-xs text-slate-500 mb-2" id="billing-limits-label"></p>
+          <button type="button" class="btn-toolbar w-full mb-1 hidden" id="btn-billing-pro" onclick="CF.startBillingCheckout('pro')">Pro — $29/mo</button>
+          <button type="button" class="btn-toolbar w-full mb-1 hidden" id="btn-billing-team" onclick="CF.startBillingCheckout('team')">Team — $79/mo</button>
+          <button type="button" class="btn-toolbar w-full mb-1 hidden" id="btn-billing-ultra" onclick="CF.startBillingCheckout('ultra')">Ultra — $129/mo</button>
           <button type="button" class="btn-sidebar-ghost w-full hidden" id="btn-billing-portal" onclick="CF.openBillingPortal()">Manage subscription</button>
         </div>
         <button type="button" class="btn-sidebar-ghost" onclick="CF.logout()">Sign out</button>
