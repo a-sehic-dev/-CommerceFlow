@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     product_tagline: str = "Ecommerce Operations Intelligence"
     founder_name: str = "Sedin Šehić"
     founder_url: str = "https://www.linkedin.com/in/sedin-sehic-1134253a8/"
-    product_version: str = "1.0.0"
+    product_version: str = "1.1.1"
     workspace_mode: str = "demo_workspace"
     auto_bootstrap_demo: bool = True
     app_env: str = "development"

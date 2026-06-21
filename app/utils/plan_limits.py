@@ -80,6 +80,13 @@ def get_plan_limits(plan: str | None) -> PlanLimits:
     return PLAN_LIMITS[normalize_plan(plan)]
 
 
+PLAN_RANK = {"starter": 0, "pro": 1, "team": 2, "ultra": 3}
+
+
+def plan_rank(plan: str | None) -> int:
+    return PLAN_RANK.get(normalize_plan(plan), 0)
+
+
 def plan_limits_payload(plan: str | None) -> dict:
     limits = get_plan_limits(plan)
     return {
