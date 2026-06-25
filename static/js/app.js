@@ -2742,6 +2742,7 @@ const CF = {
 
   async loadBillingStatus() {
     const planEl = document.getElementById('billing-plan-label');
+    const planSummaryEl = document.getElementById('billing-plan-summary');
     const statusEl = document.getElementById('billing-status-label');
     const limitsEl = document.getElementById('billing-limits-label');
     const btnPro = document.getElementById('btn-billing-pro');
@@ -2756,6 +2757,7 @@ const CF = {
       const usage = data.usage || {};
       const subStatus = data.stripe?.subscription_status;
       planEl.textContent = limits.label || plan;
+      if (planSummaryEl) planSummaryEl.textContent = limits.label || plan;
       statusEl.textContent = subStatus
         ? `Stripe: ${subStatus}`
         : `${limits.price_hint || ''} · ${usage.seats_used || 1}/${limits.max_seats || 1} seats`;
@@ -2771,6 +2773,7 @@ const CF = {
       if (btnPortal) btnPortal.classList.toggle('hidden', !isOwner || !data.stripe?.customer_id);
     } catch {
       planEl.textContent = 'Starter';
+      if (planSummaryEl) planSummaryEl.textContent = 'Starter';
       statusEl.textContent = 'Sign in as owner to manage billing';
       if (limitsEl) limitsEl.textContent = '';
     }

@@ -39,17 +39,6 @@
 
   <div id="sidebar-overlay" class="sidebar-overlay" onclick="CF.closeSidebar()"></div>
 
-  {% set nav = [
-    ('overview', '/dashboard', 'Executive Overview', 'Overview', 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z'),
-    ('products', '/products', 'Product Intelligence', 'Products', 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'),
-    ('inventory', '/inventory', 'Inventory Health', 'Inventory', 'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'),
-    ('profit', '/profit', 'Profit Leakage', 'Profit', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'),
-    ('alerts', '/alerts', 'Alerts Center', 'Alerts', 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'),
-    ('imports', '/imports', 'Import History', 'Imports', 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12'),
-    ('reports', '/reports', 'Export Center', 'Exports', 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'),
-    ('guide', '/guide', 'Workspace Guide', 'Guide', 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5S19.832 5.477 21 6.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253')
-  ] %}
-
   <aside id="sidebar" class="sidebar">
     <div class="sidebar-brand">
       <div class="brand-mark" aria-hidden="true">
@@ -74,20 +63,47 @@
       </div>
     </div>
 
-    <div class="sidebar-bottom">
+    <nav class="sidebar-nav">
+      {% set nav = [
+        ('overview', '/dashboard', 'Executive Overview', 'M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z'),
+        ('products', '/products', 'Product Intelligence', 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4'),
+        ('inventory', '/inventory', 'Inventory Health', 'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'),
+        ('profit', '/profit', 'Profit Leakage', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z'),
+        ('alerts', '/alerts', 'Alerts Center', 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'),
+        ('imports', '/imports', 'Import History', 'M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12'),
+        ('reports', '/reports', 'Export Center', 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'),
+        ('guide', '/guide', 'Workspace Guide', 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5S19.832 5.477 21 6.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253')
+      ] %}
+      {% for key, href, label, icon_path in nav %}
+      <a href="{{ href }}" class="nav-item {% if page == key %}nav-item-active{% endif %}">
+        <span class="nav-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_path }}"/>
+          </svg>
+        </span>
+        <span class="nav-label">{{ label }}</span>
+        {% if page == key %}<span class="nav-active-glow"></span>{% endif %}
+      </a>
+      {% endfor %}
+    </nav>
+
+    <div class="sidebar-lower">
+    <details class="sidebar-account-fold" id="sidebar-account-fold">
+      <summary class="sidebar-account-summary">
+        <span class="sidebar-account-summary-label">Account</span>
+        <span class="sidebar-account-summary-plan" id="billing-plan-summary">{% if billing_plan %}{{ billing_plan.label }}{% else %}Guest{% endif %}</span>
+      </summary>
     <div class="sidebar-auth">
       {% if auth_user_email %}
         <p class="sidebar-auth-label">Signed in</p>
         <p class="sidebar-auth-email">{{ auth_user_email }}</p>
         <div id="billing-panel" class="sidebar-billing mt-2 pt-2 border-t border-white/5">
-          <div class="sidebar-billing-head">
-            <p class="sidebar-auth-label">Plan</p>
-            <p class="sidebar-billing-plan" id="billing-plan-label">
-              {% if billing_plan %}{{ billing_plan.label }}{% else %}—{% endif %}
-            </p>
-          </div>
-          <p class="sidebar-billing-meta" id="billing-status-label">{% if billing_detail %}{{ billing_detail }}{% endif %}</p>
-          <p class="sidebar-billing-meta" id="billing-limits-label">{% if billing_summary %}{{ billing_summary }}{% endif %}</p>
+          <p class="sidebar-auth-label">Plan</p>
+          <p class="sidebar-billing-plan text-sm text-slate-300 capitalize" id="billing-plan-label">
+            {% if billing_plan %}{{ billing_plan.label }}{% else %}—{% endif %}
+          </p>
+          <p class="text-xs text-slate-500 mb-1" id="billing-status-label">{% if billing_detail %}{{ billing_detail }}{% endif %}</p>
+          <p class="text-xs text-slate-500 mb-2" id="billing-limits-label">{% if billing_summary %}{{ billing_summary }}{% endif %}</p>
           <div class="sidebar-billing-actions">
             <button type="button" class="btn-billing-chip{% if not billing_show_pro %} hidden{% endif %}" id="btn-billing-pro" onclick="CF.openBillingModal('pro')" title="Pro — $29/mo">Pro</button>
             <button type="button" class="btn-billing-chip{% if not billing_show_team %} hidden{% endif %}" id="btn-billing-team" onclick="CF.openBillingModal('team')" title="Team — $79/mo">Team</button>
@@ -101,8 +117,10 @@
         <a href="/login" class="btn-secondary btn-primary-full">Sign in / Register</a>
       {% endif %}
     </div>
+    </details>
 
-    <a href="{{ founder_url }}" target="_blank" rel="noopener noreferrer" class="sidebar-founder sidebar-founder-compact" aria-label="Open {{ founder_name }} LinkedIn profile">
+    <a href="{{ founder_url }}" target="_blank" rel="noopener noreferrer" class="sidebar-founder sidebar-founder-mini" aria-label="Open {{ founder_name }} LinkedIn profile">
+      <span class="sidebar-founder-label">Built by</span>
       <span class="sidebar-founder-link">{{ founder_name }}</span>
     </a>
 
@@ -131,20 +149,6 @@
       </div>
     </div>
     <div id="active-datasets-bar" class="active-datasets-bar hidden"></div>
-
-    <nav class="module-nav" aria-label="Analytics modules">
-      {% for key, href, label, short_label, icon_path in nav %}
-      <a href="{{ href }}" class="module-nav-item {% if page == key %}module-nav-item-active{% endif %}" title="{{ label }}">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon_path }}"/>
-          </svg>
-        </span>
-        <span class="module-nav-text module-nav-text-full">{{ label }}</span>
-        <span class="module-nav-text module-nav-text-short">{{ short_label }}</span>
-      </a>
-      {% endfor %}
-    </nav>
 
     <header class="topbar">
       <div class="topbar-left">
@@ -362,7 +366,7 @@
     <span>Feedback</span>
   </button>
 
-  <script src="/static/js/app.js?v=1.1.4"></script>
+  <script src="/static/js/app.js?v=1.1.5"></script>
   {% block scripts %}{% endblock %}
   <script>document.addEventListener('DOMContentLoaded', () => CF.init());</script>
 </body>
