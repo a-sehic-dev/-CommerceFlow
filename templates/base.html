@@ -88,28 +88,53 @@
     </nav>
 
     <div class="sidebar-lower">
+    {% if auth_user_email %}
+    <div class="sidebar-upgrade-strip" id="sidebar-upgrade-strip" aria-label="Upgrade plans">
+      <div class="sidebar-upgrade-head">
+        <span class="sidebar-upgrade-eyebrow">Plans &amp; billing</span>
+        <span class="sidebar-upgrade-current" id="billing-plan-summary">{% if billing_plan %}{{ billing_plan.label }}{% else %}Starter{% endif %}</span>
+      </div>
+      <p class="sidebar-upgrade-hint">Tap a plan to see features and upgrade</p>
+      <div class="sidebar-billing-actions sidebar-billing-actions-prominent">
+        <button type="button" class="btn-plan-tier{% if not billing_show_pro %} hidden{% endif %}" id="btn-billing-pro" onclick="CF.openBillingModal('pro')">
+          <span class="btn-plan-tier-name">Pro</span>
+          <span class="btn-plan-tier-price">$29/mo</span>
+        </button>
+        <button type="button" class="btn-plan-tier btn-plan-tier-featured{% if not billing_show_team %} hidden{% endif %}" id="btn-billing-team" onclick="CF.openBillingModal('team')">
+          <span class="btn-plan-tier-name">Team</span>
+          <span class="btn-plan-tier-price">$79/mo</span>
+        </button>
+        <button type="button" class="btn-plan-tier{% if not billing_show_ultra %} hidden{% endif %}" id="btn-billing-ultra" onclick="CF.openBillingModal('ultra')">
+          <span class="btn-plan-tier-name">Ultra</span>
+          <span class="btn-plan-tier-price">$129/mo</span>
+        </button>
+      </div>
+      <button type="button" class="btn-sidebar-ghost w-full hidden mt-2" id="btn-billing-portal" onclick="CF.openBillingPortal()">Manage subscription</button>
+    </div>
+    {% endif %}
+
     <details class="sidebar-account-fold" id="sidebar-account-fold">
       <summary class="sidebar-account-summary">
-        <span class="sidebar-account-summary-label">Account</span>
-        <span class="sidebar-account-summary-plan" id="billing-plan-summary">{% if billing_plan %}{{ billing_plan.label }}{% else %}Guest{% endif %}</span>
+        <span class="sidebar-account-summary-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        </span>
+        <span class="sidebar-account-summary-copy">
+          <span class="sidebar-account-summary-title">Account settings</span>
+          <span class="sidebar-account-summary-sub" id="billing-account-sub">{% if auth_user_email %}{{ auth_user_email }}{% else %}Sign in for private workspace{% endif %}</span>
+        </span>
+        <span class="sidebar-account-chevron" aria-hidden="true">▾</span>
       </summary>
     <div class="sidebar-auth">
       {% if auth_user_email %}
         <p class="sidebar-auth-label">Signed in</p>
         <p class="sidebar-auth-email">{{ auth_user_email }}</p>
         <div id="billing-panel" class="sidebar-billing mt-2 pt-2 border-t border-white/5">
-          <p class="sidebar-auth-label">Plan</p>
+          <p class="sidebar-auth-label">Current plan</p>
           <p class="sidebar-billing-plan text-sm text-slate-300 capitalize" id="billing-plan-label">
             {% if billing_plan %}{{ billing_plan.label }}{% else %}—{% endif %}
           </p>
           <p class="text-xs text-slate-500 mb-1" id="billing-status-label">{% if billing_detail %}{{ billing_detail }}{% endif %}</p>
           <p class="text-xs text-slate-500 mb-2" id="billing-limits-label">{% if billing_summary %}{{ billing_summary }}{% endif %}</p>
-          <div class="sidebar-billing-actions">
-            <button type="button" class="btn-billing-chip{% if not billing_show_pro %} hidden{% endif %}" id="btn-billing-pro" onclick="CF.openBillingModal('pro')" title="Pro — $29/mo">Pro</button>
-            <button type="button" class="btn-billing-chip{% if not billing_show_team %} hidden{% endif %}" id="btn-billing-team" onclick="CF.openBillingModal('team')" title="Team — $79/mo">Team</button>
-            <button type="button" class="btn-billing-chip{% if not billing_show_ultra %} hidden{% endif %}" id="btn-billing-ultra" onclick="CF.openBillingModal('ultra')" title="Ultra — $129/mo">Ultra</button>
-          </div>
-          <button type="button" class="btn-sidebar-ghost w-full hidden mt-2" id="btn-billing-portal" onclick="CF.openBillingPortal()">Manage subscription</button>
         </div>
         <button type="button" class="btn-sidebar-ghost" onclick="CF.logout()">Sign out</button>
       {% else %}
@@ -366,7 +391,7 @@
     <span>Feedback</span>
   </button>
 
-  <script src="/static/js/app.js?v=1.1.5"></script>
+  <script src="/static/js/app.js?v=1.1.6"></script>
   {% block scripts %}{% endblock %}
   <script>document.addEventListener('DOMContentLoaded', () => CF.init());</script>
 </body>

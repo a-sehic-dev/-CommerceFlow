@@ -2771,6 +2771,11 @@ const CF = {
       if (btnTeam) btnTeam.classList.toggle('hidden', !isOwner || current >= 2);
       if (btnUltra) btnUltra.classList.toggle('hidden', !isOwner || current >= 3);
       if (btnPortal) btnPortal.classList.toggle('hidden', !isOwner || !data.stripe?.customer_id);
+      const upgradeStrip = document.getElementById('sidebar-upgrade-strip');
+      if (upgradeStrip) {
+        const anyUpgrade = [btnPro, btnTeam, btnUltra].some((btn) => btn && !btn.classList.contains('hidden'));
+        upgradeStrip.classList.toggle('hidden', !isOwner || !anyUpgrade);
+      }
     } catch {
       planEl.textContent = 'Starter';
       if (planSummaryEl) planSummaryEl.textContent = 'Starter';
