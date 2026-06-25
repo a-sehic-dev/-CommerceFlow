@@ -2767,14 +2767,14 @@ const CF = {
       const isOwner = (data.role || '').toLowerCase() === 'owner';
       const rank = { starter: 0, pro: 1, team: 2, ultra: 3 };
       const current = rank[plan] ?? 0;
-      if (btnPro) btnPro.classList.toggle('hidden', !isOwner || current >= 1);
-      if (btnTeam) btnTeam.classList.toggle('hidden', !isOwner || current >= 2);
-      if (btnUltra) btnUltra.classList.toggle('hidden', !isOwner || current >= 3);
-      if (btnPortal) btnPortal.classList.toggle('hidden', !isOwner || !data.stripe?.customer_id);
+      if (btnPro) btnPro.classList.toggle('is-hidden', !isOwner || current >= 1);
+      if (btnTeam) btnTeam.classList.toggle('is-hidden', !isOwner || current >= 2);
+      if (btnUltra) btnUltra.classList.toggle('is-hidden', !isOwner || current >= 3);
+      if (btnPortal) btnPortal.classList.toggle('is-hidden', !isOwner || !data.stripe?.customer_id);
       const upgradeStrip = document.getElementById('sidebar-upgrade-strip');
       if (upgradeStrip) {
-        const anyUpgrade = [btnPro, btnTeam, btnUltra].some((btn) => btn && !btn.classList.contains('hidden'));
-        upgradeStrip.classList.toggle('hidden', !isOwner || !anyUpgrade);
+        const anyUpgrade = [btnPro, btnTeam, btnUltra].some((btn) => btn && !btn.classList.contains('is-hidden'));
+        upgradeStrip.classList.toggle('is-hidden', !isOwner || !anyUpgrade);
       }
     } catch {
       planEl.textContent = 'Starter';

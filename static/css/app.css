@@ -298,55 +298,68 @@
   line-height: 1.35;
 }
 
-.sidebar-billing-actions-prominent {
+.sidebar-lower .sidebar-plan-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.35rem;
+  width: 100%;
 }
-.btn-plan-tier {
+
+.sidebar-lower .sidebar-plan-btn {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.1rem;
-  min-height: 2.65rem;
-  padding: 0.35rem 0.25rem;
+  gap: 0.12rem;
+  width: 100%;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0.4rem 0.25rem;
   border-radius: 0.55rem;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background: rgba(2, 6, 23, 0.55);
-  color: #f1f5f9;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: rgba(2, 6, 23, 0.72);
+  color: #f8fafc;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.2;
+  text-align: center;
   cursor: pointer;
   transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
 }
-.btn-plan-tier:hover {
+
+.sidebar-lower .sidebar-plan-btn:hover {
   transform: translateY(-1px);
   border-color: rgba(129, 140, 248, 0.55);
-  background: rgba(99, 102, 241, 0.18);
-  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.22);
+  background: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.2);
 }
-.btn-plan-tier:active {
-  transform: translateY(0);
+
+.sidebar-lower .sidebar-plan-btn.is-featured {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.14), rgba(2, 6, 23, 0.72));
 }
-.btn-plan-tier-featured {
-  border-color: rgba(52, 211, 153, 0.35);
-  background: linear-gradient(180deg, rgba(52, 211, 153, 0.12), rgba(2, 6, 23, 0.55));
-}
-.btn-plan-tier-featured:hover {
-  border-color: rgba(52, 211, 153, 0.55);
-  box-shadow: 0 6px 18px rgba(52, 211, 153, 0.18);
-}
-.btn-plan-tier-name {
-  font-size: 0.72rem;
+
+.sidebar-lower .sidebar-plan-btn-name {
+  display: block;
+  font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.02em;
 }
-.btn-plan-tier-price {
+
+.sidebar-lower .sidebar-plan-btn-price {
+  display: block;
   font-size: 0.58rem;
-  color: #94a3b8;
   font-weight: 600;
+  color: #94a3b8;
 }
-.btn-plan-tier:hover .btn-plan-tier-price {
-  color: #cbd5e1;
+
+.sidebar-lower .sidebar-plan-btn:hover .sidebar-plan-btn-price {
+  color: #e2e8f0;
+}
+
+.sidebar-lower .is-hidden {
+  display: none !important;
 }
 
 .sidebar-account-fold {
@@ -359,12 +372,13 @@
 .sidebar-account-fold summary {
   list-style: none;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.6rem 0.7rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 0.05rem 0.45rem;
+  padding: 0.55rem 0.65rem;
   user-select: none;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  transition: background var(--transition-fast);
 }
 .sidebar-account-fold summary:hover {
   background: rgba(255, 255, 255, 0.04);
@@ -376,33 +390,16 @@
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
   background: rgba(99, 102, 241, 0.08);
 }
-.sidebar-account-summary-icon {
-  width: 1.65rem;
-  height: 1.65rem;
-  border-radius: 0.45rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: rgba(99, 102, 241, 0.15);
-  color: #a5b4fc;
-}
-.sidebar-account-summary-icon svg {
-  width: 1rem;
-  height: 1rem;
-}
-.sidebar-account-summary-copy {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  gap: 0.1rem;
-}
 .sidebar-account-summary-title {
-  font-size: 0.74rem;
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 0.72rem;
   font-weight: 700;
   color: #e2e8f0;
 }
 .sidebar-account-summary-sub {
+  grid-column: 1;
+  grid-row: 2;
   font-size: 0.62rem;
   color: var(--text-muted);
   white-space: nowrap;
@@ -410,10 +407,12 @@
   text-overflow: ellipsis;
 }
 .sidebar-account-chevron {
-  font-size: 0.7rem;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 0.72rem;
   color: #94a3b8;
   transition: transform var(--transition-fast);
-  flex-shrink: 0;
 }
 .sidebar-account-fold[open] .sidebar-account-chevron {
   transform: rotate(180deg);
